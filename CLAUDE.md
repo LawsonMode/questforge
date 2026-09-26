@@ -52,4 +52,5 @@ node scripts/e2e.mjs --all   # e2e (uses installed Chrome/Edge via playwright-co
 - Source files use CRLF line endings.
 - `#/play/<id>` starts on the title screen (`game.services` is null until a file is chosen); `#/playtest/<id>` starts
   in gameplay.
-- Not a git repo yet (no remote). Initialise + push only when Chad asks.
+- GitHub: **LawsonMode/questforge** (public). Every push to `main` runs `.github/workflows/deploy.yml` (vitest + build) and
+  publishes to GitHub Pages: https://lawsonmode.github.io/questforge/ . Push only when Chad asks.
