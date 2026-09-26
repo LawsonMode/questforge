@@ -3,13 +3,17 @@
 // lifecycle, rendering order, GameServices implementation. OWNER: engine agent.
 // Gameplay itself (GameServices, rooms, entities, sub-states) lives in
 // session.ts; this file owns the canvas, input, audio, loop and the screens
-// shown before a save file is being played.
+// shown before a save file is being played. It also watches the gamepads: when
+// the one in use is unplugged mid-game the session pauses (see Session.
+// controllerLost). A playtest is left with Escape, or on a gamepad by holding
+// Start + Select for EXIT_HOLD seconds (a progress bar shows after EXIT_HINT_AT).
 import type { Project, SaveData, WarpTarget } from '../core/types';
 import type { DebugFlags, GameServices } from './api';
 import { SAVE_SLOTS, STEP } from '../core/constants';
 import { CanvasRenderer } from '../gfx/renderer';
 import { wrapText } from '../gfx/font';
 import { Input } from '../input/input';
+import { type PadConnection, onPadConnection } from '../input/devices';
 import { getAudio } from '../audio/audio';
 import { deleteSave, listSaves, writeSave } from '../core/storage';
 import { DEFAULT_HERO_NAME, newSave } from './state';
@@ -17,6 +21,7 @@ import { applySoundPrefs, loadSoundPrefs } from './soundPrefs';
 import { Session, type SessionHost } from './session';
 import { TitleScreen } from './ui/titleScreen';
 import { FileSelect } from './ui/fileSelect';
+import { SCREEN, UI, drawFrame, outlineText } from './ui/theme';
 
 export interface GameOptions {
   /** 'play' = title screen & file select; 'playtest' = straight into gameplay (editor/test). */
@@ -25,7 +30,7 @@ export interface GameOptions {
   start?: WarpTarget;
   /** Initial debug toggles (playtest F1-F4 flip them at runtime). */
   debug?: Partial<DebugFlags>;
-  /** Called when the player quits to the host (menu "Save & Quit" in play mode, Escape in playtest). */
+  /** Called when the player quits to the host (menu "Save & Quit" in play mode; Escape or held Start + Select in playtest). */
   onExit?: () => void;
   /** Called once if the game stops after an uncaught error (the canvas also shows the message). */
   onError?: (message: string) => void;
@@ -47,6 +52,10 @@ const STEP_SLACK = 0.001;
 const DEBUG_KEYS: Readonly<Record<string, keyof DebugFlags>> = {
   F1: 'hitboxes', F2: 'invincible', F3: 'noclip', F4: 'fps',
 };
+/** Playtest: hold Start + Select this long (s) to leave; the progress hint shows from EXIT_HINT_AT. */
+export const EXIT_HOLD = 1;
+const EXIT_HINT_AT = 0.3;
+const EXIT_HINT = { w: 132, h: 26, y: 186, bar: 104 } as const;
 
 type Screen = 'title' | 'loading' | 'fileSelect' | 'session';
 
@@ -72,6 +81,10 @@ export class Game {
   private fps = 60;
   private fpsFrames = 0;
   private fpsSince = 0;
+  /** Seconds Start + Select have been held together (playtest exit chord), and whether it fired. */
+  private exitHold = 0;
+  private exitFired = false;
+  private unsubscribe: (() => void)[] = [];
 
   constructor(canvas: HTMLCanvasElement, project: Project, opts: GameOptions) {
     this.project = project;
@@ -114,6 +127,7 @@ export class Game {
     this.win.addEventListener('pointerdown', this.onGesture, true);
     this.win.addEventListener('resize', this.onResize);
     this.win.document.addEventListener('visibilitychange', this.onVisibility);
+    this.unsubscribe = [onPadConnection(this.onPad)];
     this.input.attach(this.win);
     this.renderer.resize();
     this.last = this.win.performance.now();
@@ -132,6 +146,8 @@ export class Game {
     this.win.removeEventListener('pointerdown', this.onGesture, true);
     this.win.removeEventListener('resize', this.onResize);
     this.win.document.removeEventListener('visibilitychange', this.onVisibility);
+    for (const off of this.unsubscribe) off();
+    this.unsubscribe = [];
     this.input.detach();
   }
 
@@ -165,6 +181,8 @@ export class Game {
       for (; this.acc >= STEP - STEP_SLACK && steps < MAX_STEPS; steps++) {
         this.tick(STEP);
         this.acc -= STEP;
+        // A host may stop or destroy the game from inside a tick (onExit): nothing more to run or draw.
+        if (!this.running) return;
       }
       // Nothing changed without a simulation step (high-refresh displays): skip the redraw.
       if (steps === 0) return;
@@ -200,6 +218,7 @@ export class Game {
   private tick(dt: number): void {
     this.input.update();
     this.clock += dt;
+    if (this.opts.mode === 'playtest' && this.tickExitChord(dt)) return;
     switch (this.screen) {
       case 'title':
         if (this.title!.update(dt, this.input) === 'start') void this.openFileSelect();
@@ -236,7 +255,38 @@ export class Game {
         r.clear('#000000');
         break;
     }
+    if (this.exitHold >= EXIT_HINT_AT) this.drawExitHint();
     r.present();
+  }
+
+  /**
+   * Playtest exit chord: a gamepad has no Escape key, so holding Start + Select
+   * together for EXIT_HOLD seconds leaves too. True on the tick it fires.
+   */
+  private tickExitChord(dt: number): boolean {
+    if (!this.input.held('start') || !this.input.held('select')) {
+      this.exitHold = 0;
+      return false;
+    }
+    this.exitHold += dt;
+    if (this.exitHold < EXIT_HOLD || this.exitFired) return false;
+    this.exitFired = true;
+    this.opts.onExit?.();
+    return true;
+  }
+
+  /** "LEAVING PLAYTEST" with a bar filling up while the exit chord is held. */
+  private drawExitHint(): void {
+    const r = this.renderer;
+    const h = EXIT_HINT;
+    const x = Math.round((r.width - h.w) / 2);
+    const k = Math.min(1, (this.exitHold - EXIT_HINT_AT) / (EXIT_HOLD - EXIT_HINT_AT));
+    drawFrame(r, x, h.y, h.w, h.h, UI.fillDeep);
+    outlineText(r, 'LEAVING PLAYTEST', r.width / 2, h.y + 6, UI.gold, { align: 'center' });
+    const bx = Math.round((r.width - h.bar) / 2);
+    r.fillRect(bx - 1, h.y + 17, h.bar + 2, 4, UI.outline, SCREEN);
+    r.fillRect(bx, h.y + 18, h.bar, 2, UI.shade, SCREEN);
+    r.fillRect(bx, h.y + 18, Math.round(h.bar * k), 2, UI.gold, SCREEN);
   }
 
   private countFps(now: number): void {
@@ -355,6 +405,11 @@ export class Game {
 
   private readonly onGesture = (): void => {
     this.audio.unlock();
+  };
+
+  /** The pad in use was unplugged (not a spare one): pause the game. */
+  private readonly onPad = (e: PadConnection): void => {
+    if (e.wasInUse) this.session?.controllerLost();
   };
 
   private readonly onResize = (): void => {

@@ -6,6 +6,7 @@
 import type { Vec } from '../core/math';
 import { FPS } from '../core/constants';
 import { BUTTONS, type Button, type InputManager } from '../game/api';
+import { controllerPrefs, noteKeyboard, notePad } from './devices';
 
 /** KeyboardEvent.code -> Button. See the key map documented on Button in game/api.ts. */
 export const DEFAULT_KEYMAP: Readonly<Record<string, Button>> = {
@@ -52,6 +53,8 @@ export interface KeyLike {
 /** Minimal gamepad shape read by the poller (matches the Gamepad API). */
 interface PadLike {
   connected: boolean;
+  id?: string;
+  index?: number;
   buttons: ReadonlyArray<{ pressed: boolean; value: number }>;
   axes: readonly number[];
 }
@@ -61,6 +64,8 @@ const INDEX = Object.fromEntries(BUTTONS.map((b, i) => [b, i])) as Record<Button
 /** [pad button index, button slot] pairs, precomputed for polling. */
 const PAD_SLOTS: ReadonlyArray<readonly [number, number]> =
   Object.entries(PAD_BUTTONS).map(([idx, b]) => [Number(idx), INDEX[b]] as const);
+/** Button slots for pad buttons 0 (bottom) and 1 (right) when ControllerPrefs.swapFaceButtons is on. */
+const SWAPPED_FACE: Readonly<Record<number, number>> = { 0: INDEX.a, 1: INDEX.b };
 
 /** True for form fields / contenteditable, whose keys belong to the editor UI. */
 function isEditable(target: EventTarget | null | undefined): boolean {
@@ -177,6 +182,7 @@ export class Input implements InputManager {
     const b = this.keymap[e.code];
     if (!b || shortcut || isAltGr(e)) return;
     e.preventDefault?.();
+    noteKeyboard();
     if (e.repeat || this.keysDown.has(e.code)) return;
     this.keysDown.add(e.code);
     const i = INDEX[b];
@@ -290,13 +296,21 @@ export class Input implements InputManager {
 
   private pollPads(): void {
     const next = this.padScratch.fill(false);
-    for (const p of readPads()) {
+    const swap = controllerPrefs().swapFaceButtons;
+    const pads = readPads();
+    for (let n = 0; n < pads.length; n++) {
+      const p = pads[n];
       if (!p || !p.connected) continue;
+      let active = false;
       for (const [idx, slot] of PAD_SLOTS) {
         const btn = p.buttons[idx];
-        if (btn && (btn.pressed || btn.value > 0.5)) next[slot] = true;
+        if (btn && (btn.pressed || btn.value > 0.5)) {
+          next[swap && idx <= 1 ? SWAPPED_FACE[idx]! : slot] = true;
+          active = true;
+        }
       }
-      this.readStick(p.axes[0] ?? 0, p.axes[1] ?? 0, next);
+      if (this.readStick(p.axes[0] ?? 0, p.axes[1] ?? 0, next)) active = true;
+      if (active) notePad(p.index ?? n, p.id ?? '');
     }
     for (let i = 0; i < COUNT; i++) {
       if (this.padSuppressed[i]) {
@@ -308,9 +322,9 @@ export class Input implements InputManager {
     }
   }
 
-  /** Radial deadzone, then snap the stick angle to the nearest of 8 directions (y+ is down). */
-  private readStick(ax: number, ay: number, out: boolean[]): void {
-    if (!(Math.hypot(ax, ay) > STICK_DEADZONE)) return;
+  /** Radial deadzone, then snap the stick angle to the nearest of 8 directions (y+ is down). True if pushed. */
+  private readStick(ax: number, ay: number, out: boolean[]): boolean {
+    if (!(Math.hypot(ax, ay) > STICK_DEADZONE)) return false;
     const sector = Math.round(Math.atan2(ay, ax) / STICK_SECTOR) * STICK_SECTOR;
     const x = Math.round(Math.cos(sector));
     const y = Math.round(Math.sin(sector));
@@ -318,5 +332,6 @@ export class Input implements InputManager {
     if (x > 0) out[INDEX.right] = true;
     if (y < 0) out[INDEX.up] = true;
     if (y > 0) out[INDEX.down] = true;
+    return true;
   }
 }

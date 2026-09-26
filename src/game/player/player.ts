@@ -5,7 +5,8 @@
 // Structure: a state machine — `st` + one update method per state, dispatched
 // from update(). Pure rules live in sword.ts, dash.ts, shield.ts and reach.ts,
 // blade contact in blade.ts, item buttons in items/, and everything the hero
-// fires, throws or places in ../projectiles/.
+// fires, throws or places in ../projectiles/. The gamepad rumbles (input/devices.ts)
+// when the hero is hurt, starts falling into a pit or bonks a wall mid-dash.
 // OWNER: engine agent (wave A) then player agent (wave B).
 import type { Dir, EntityInstance } from '../../core/types';
 import type { GameServices, Hit, PlayerApi, PlayerState, Renderer } from '../api';
@@ -15,6 +16,7 @@ import { neighborRoom } from '../../core/project';
 import { VARIANT_PALETTES } from '../../content/ids';
 import { type CarryInfo, Entity, animLength, findSprite } from '../entity';
 import { healSave } from '../state';
+import { rumble } from '../../input/devices';
 import { WALK_SPEED, heldDirs, nextFacing, walkVelocity } from './facing';
 import { hopLanding } from './hop';
 import {
@@ -267,6 +269,7 @@ export class Player extends Entity implements PlayerApi {
     this.enter('fall');
     this.play('fall', true);
     this.game.audio.sfx('fall');
+    rumble('hit');
   }
 
   /** Bring the hero back after a game over (hp is set by the engine). */
@@ -793,6 +796,7 @@ export class Player extends Entity implements PlayerApi {
     const f = DIR_VEC[this.facing];
     this.blade = null;
     this.game.audio.sfx('hit');
+    rumble('hit');
     this.game.camera.shake(BONK_SHAKE, 2);
     this.game.effect('fx.hit', 'play', this.x + f.x * (this.w / 2 + 2), this.y + f.y * (this.h / 2 + 2) - 4);
     this.knockExact(-f.x, -f.y, BONK_KNOCKBACK, KNOCKBACK_TIME);
@@ -917,6 +921,8 @@ export class Player extends Entity implements PlayerApi {
       save.hp = Math.max(0, save.hp - damage);
       this.syncHealth();
       this.game.audio.sfx('hurt');
+      // A pit fall already rumbled when the hero started falling.
+      if (!falling) rumble('hit');
       this.invuln = IFRAMES;
       this.hitFlash = HURT_FLASH;
       if (save.hp <= 0) {

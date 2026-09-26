@@ -12,8 +12,9 @@
 // Amounts: omitted / invalid / negative -> the default; an explicit 0 gives (or takes) nothing,
 // except for level items where it steps up one level (per `amount || current+1` above).
 // Unknown item ids (hand-edited projects) are ignored: no state change, empty message.
-// Key names in the messages come from the input map (keys.ts). Save maps keyed by
-// project text (dungeons by world id) are read as own properties only, so an id
+// Messages name buttons with {btn:x} tokens ({btn:y}, {btn:start}, ...), which
+// the dialogue box replaces with the labels of the device in use when it shows
+// them (input/devices.ts substituteButtons). Save maps keyed by project text (dungeons by world id) are read as own properties only, so an id
 // such as "__proto__" or "constructor" is an ordinary key, never an inherited member.
 import type { DungeonState, ItemId, Project, SaveData, World } from '../core/types';
 import { EQUIPPABLE_ITEMS, ITEM_IDS } from '../core/types';
@@ -22,7 +23,6 @@ import {
 } from '../core/constants';
 import { clamp } from '../core/math';
 import { ITEM_INFO } from '../content/ids';
-import { keyWord } from './keys';
 
 /** The hero's name where no player typed one (playtest, previews): matches the Dialogue tab's preview name. */
 export const DEFAULT_HERO_NAME = 'Hero';
@@ -130,7 +130,7 @@ export function dungeonState(save: SaveData, worldId: string): DungeonState {
   return d;
 }
 
-/** Apply an item gain. Returns the item-get message (e.g. "You got the Bow! Press C to use it."). */
+/** Apply an item gain. Returns the item-get message (e.g. "You got the Bow! ... press {btn:y} to shoot."). */
 export function applyItem(save: SaveData, worldId: string, item: ItemId, amount?: number): { message: string } {
   if (!isKnownItem(item)) return { message: '' };
   const message = grant(save, worldId, item, amount);
@@ -175,15 +175,15 @@ function grant(save: SaveData, worldId: string, item: ItemId, amount: number | u
   }
 }
 
-/** "Select it in the menu (Enter) and press C to ..." with the game's own key names. */
-const SELECT_AND_USE = `Select it in the menu (${keyWord('start')}) and press ${keyWord('y')} to`;
+/** "Select it in the menu (Enter) and press C to ...", naming the buttons of the device in use when shown. */
+const SELECT_AND_USE = 'Select it in the menu ({btn:start}) and press {btn:y} to';
 
 const GEAR_MESSAGES: Record<'shield' | 'bow' | 'hookshot' | 'lantern' | 'boots' | 'flippers', string> = {
   shield: `You got the ${ITEM_INFO.shield.name}! It blocks small projectiles from the front.`,
   bow: `You got the ${ITEM_INFO.bow.name}! ${SELECT_AND_USE} shoot.`,
   hookshot: `You got the ${ITEM_INFO.hookshot.name}! ${SELECT_AND_USE} fire it.`,
   lantern: `You got the ${ITEM_INFO.lantern.name}! ${SELECT_AND_USE} light torches.`,
-  boots: `You got the ${ITEM_INFO.boots.name}! Hold ${keyWord('a')} to dash.`,
+  boots: `You got the ${ITEM_INFO.boots.name}! Hold {btn:a} to dash.`,
   flippers: `You got the ${ITEM_INFO.flippers.name}! Now you can swim in deep water.`,
 };
 
@@ -201,13 +201,13 @@ function grantLevel(save: SaveData, item: 'sword' | 'glove' | 'boomerang', amoun
   if (level >= 2) {
     switch (item) {
       case 'sword': return `Your ${name} glows with new power! It strikes harder than ever.`;
-      case 'glove': return `Your ${name} grew stronger! Now you can lift heavy rocks with ${keyWord('a')}.`;
+      case 'glove': return `Your ${name} grew stronger! Now you can lift heavy rocks with {btn:a}.`;
       case 'boomerang': return `Your ${name} was upgraded! It flies farther and faster.`;
     }
   }
   switch (item) {
-    case 'sword': return `You got the ${name}! Press ${keyWord('b')} to swing it. Hold ${keyWord('b')}, then release, for a spin attack.`;
-    case 'glove': return `You got the ${name}! Press ${keyWord('a')} to lift rocks.`;
+    case 'sword': return `You got the ${name}! Press {btn:b} to swing it. Hold {btn:b}, then release, for a spin attack.`;
+    case 'glove': return `You got the ${name}! Press {btn:a} to lift rocks.`;
     case 'boomerang': return `You got the ${name}! ${SELECT_AND_USE} throw it.`;
   }
 }
@@ -219,7 +219,7 @@ function grantCounter(save: SaveData, item: 'bombs' | 'arrows' | 'rupees' | 'mag
       save.items.bombs = 1;
       save.bombs = Math.min(save.maxBombs, save.bombs + n);
       return first
-        ? `You got ${plural(n, 'a Bomb', 'Bombs')}! Select them in the menu (${keyWord('start')}) and press ${keyWord('y')} to place one.`
+        ? `You got ${plural(n, 'a Bomb', 'Bombs')}! Select them in the menu ({btn:start}) and press {btn:y} to place one.`
         : `You got ${plural(n, 'a Bomb', 'Bombs')}!`;
     }
     case 'arrows':
@@ -278,7 +278,7 @@ function grantDungeon(save: SaveData, worldId: string, item: 'smallKey' | 'bigKe
       return `You found the ${ITEM_INFO.bigKey.name}! It opens the big chest and the boss door.`;
     case 'map':
       d.map = true;
-      return `You found the ${ITEM_INFO.map.name}! Press ${keyWord('select')} (or M) to view it.`;
+      return `You found the ${ITEM_INFO.map.name}! Press {btn:select} to view it.`;
     case 'compass':
       d.compass = true;
       return `You found the ${ITEM_INFO.compass.name}! Chests and the boss now show on the map.`;

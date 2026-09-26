@@ -2,16 +2,20 @@
 // layers (twinkling stars and a moon, far mountains, drifting clouds, near hills
 // and a pine treeline) under the project title in large gold bitmap letters,
 // the subtitle, a blinking "PRESS ENTER" and a line naming the main controls (a
-// shared #/play link is often the first thing a player sees). On a touch-only
-// device (coarse pointer, no gamepad connected) the prompt says a keyboard or
-// gamepad is needed instead, as there is no touch control. Fades in slowly; any
-// confirm button during the fade shows everything at once. The static sky and
-// moon are drawn once into offscreen canvases and blitted each frame; the moving
-// layers draw as merged runs of columns/rows. OWNER: triggers+UI agent.
+// shared #/play link is often the first thing a player sees). Both name the
+// buttons of the device in use (keys, or the pad's own glyphs) and follow a
+// switch between keyboard and gamepad at once. A gamepad cannot unlock browser
+// audio, so while the sound is locked a pad player is told to click or press a
+// key for it. On a touch-only device (coarse pointer, no gamepad connected) the
+// prompt says a keyboard or gamepad is needed instead, as there is no touch
+// control. Fades in slowly; any confirm button during the fade shows everything
+// at once. The static sky and moon are drawn once into offscreen canvases and
+// blitted each frame; the moving layers draw as merged runs of columns/rows.
+// OWNER: triggers+UI agent.
 import type { Project } from '../../core/types';
-import type { AudioApi, InputState, Renderer } from '../api';
-import { wrapText } from '../../gfx/font';
-import { GOLD_BANDS, SCREEN, UI, bigText, keyLabel, outlineText } from './theme';
+import type { AudioApi, Button, InputState, Renderer } from '../api';
+import { measureText, wrapText } from '../../gfx/font';
+import { GOLD_BANDS, SCREEN, SOUND_HINT, UI, bigText, keyLabel, liveText, needsSoundHint, outlineText } from './theme';
 
 const FADE_IN = 1.6;
 const START_BUTTONS = ['start', 'a', 'b'] as const;
@@ -19,12 +23,31 @@ const START_BUTTONS = ['start', 'a', 'b'] as const;
 const TITLE_MAX_W = 236;
 const TITLE_TOP = 40;
 const HORIZON = 150;
-/** Screen y of the start prompt and of the controls line under it. */
+/** Screen y of the start prompt, of the controls line under it and of the gamepad sound hint. */
 const PROMPT_Y = 170;
 const CONTROLS_Y = 184;
-/** The main controls, with the game's own key names. */
-const CONTROLS_LINE = `${keyLabel('b')} SWORD   ${keyLabel('a')} ACTION   ${keyLabel('y')} ITEM   ${keyLabel('start')} MENU`;
+const SOUND_HINT_Y = 197;
+/** Widest the controls line may be (px) with its roomy spacing. */
+const CONTROLS_MAX_W = 240;
+/** The main controls: [button, what it does]. */
+const CONTROLS: readonly (readonly [Button, string])[] = [['b', 'SWORD'], ['a', 'ACTION'], ['y', 'ITEM'], ['start', 'MENU']];
 const NEEDS_KEYS = 'KEYBOARD OR GAMEPAD REQUIRED';
+
+/** "PRESS <start>" with the current device's name for Start (ENTER, MENU, OPTIONS, +...). */
+const startPrompt = liveText(() => `PRESS ${keyLabel('start')}`);
+
+/**
+ * The main controls with the current device's button names ("Z SWORD   X ACTION ...");
+ * a button already named after its job (an Xbox pad's MENU) is not named twice.
+ */
+const controlsLine = liveText(() => {
+  const parts = CONTROLS.map(([b, job]) => {
+    const label = keyLabel(b);
+    return label === job ? label : `${label} ${job}`;
+  });
+  const roomy = parts.join('   ');
+  return measureText(roomy) <= CONTROLS_MAX_W ? roomy : parts.join('  ');
+});
 
 /** A touch screen is the only pointer (phones, tablets): the game has no touch controls. */
 function coarsePointerOnly(): boolean {
@@ -205,8 +228,9 @@ export class TitleScreen {
     if (shown && this.touchOnly && !gamepadConnected()) {
       outlineText(r, NEEDS_KEYS, cx, PROMPT_Y, UI.gold, { align: 'center', outline: '#000020' });
     } else if (shown) {
-      if (this.t % 1.1 < 0.75) outlineText(r, `PRESS ${keyLabel('start')}`, cx, PROMPT_Y, UI.text, { align: 'center', outline: '#000020' });
-      outlineText(r, CONTROLS_LINE, cx, CONTROLS_Y, UI.mid, { align: 'center', outline: '#000020' });
+      if (this.t % 1.1 < 0.75) outlineText(r, startPrompt(), cx, PROMPT_Y, UI.text, { align: 'center', outline: '#000020' });
+      outlineText(r, controlsLine(), cx, CONTROLS_Y, UI.mid, { align: 'center', outline: '#000020' });
+      if (needsSoundHint(this.audio)) outlineText(r, SOUND_HINT, cx, SOUND_HINT_Y, UI.gold, { align: 'center', outline: '#000020' });
     }
     const author = this.project.author.trim();
     if (author) outlineText(r, `by ${author}`, cx, 210, UI.dim, { align: 'center', outline: '#000010' });

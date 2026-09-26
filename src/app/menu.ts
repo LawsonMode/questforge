@@ -2,7 +2,9 @@
 // and "Build your own", the "Your projects" grid (play, edit, duplicate,
 // export, delete), new project (blank or from the sample), import of
 // .questforge.json files (button, or a drop anywhere on the page), controls
-// help, a sound on/off toggle and the version footer.
+// help (keyboard and controller columns), a sound on/off toggle and the
+// version footer. With a controller: pad navigation (padNav.ts) and the
+// controller banner (padBanner.ts: button layout, vibration).
 import './menu.css';
 import type { Project } from '../core/types';
 import type { Nav } from './nav';
@@ -13,7 +15,7 @@ import {
   storageIsPersistent, type ProjectMeta,
 } from '../core/storage';
 import { createSampleProject } from '../content/sample/sampleProject';
-import { CONTROL_HINTS } from '../input/input';
+import { currentControls, onControlsChange, onPadConnection } from '../input/devices';
 import { el, setChildren, toast } from '../editor/ui/dom';
 import { icon } from '../editor/shell/icons';
 import { confirmAction } from '../editor/shell/dialogs';
@@ -22,15 +24,9 @@ import { createCard, metaInfo, type Card } from './projectCards';
 import { DEFAULT_PROJECT_NAME, showNewProjectDialog } from './newProject';
 import { plural, shortName, uniqueName } from './format';
 import { createSoundToggle } from './soundToggle';
-
-const CONTROLS: readonly (readonly [keys: string, what: string])[] = [
-  ['Arrows / WASD', 'Move'],
-  [CONTROL_HINTS.b, 'Sword — hold to charge a spin attack'],
-  [CONTROL_HINTS.a, 'Action — talk, read, lift, throw, open, dash'],
-  [CONTROL_HINTS.y, 'Use the selected item'],
-  [CONTROL_HINTS.start, 'Pause & inventory'],
-  [CONTROL_HINTS.select, 'Map'],
-];
+import { GAME_CONTROLS, keyboardKeys, knownPad, labelPad, padButtons, padGlyph } from './controls';
+import { createPadBanner } from './padBanner';
+import { startPadNav } from './padNav';
 
 function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -44,15 +40,39 @@ function heroButton(iconName: 'play' | 'edit', title: string, text: string, prim
       el('span', { class: 'qf-menu-cta__sub' }, text)));
 }
 
-function controlsCard(): HTMLElement {
-  return el('section', { class: 'qf-menu-side__card', 'aria-labelledby': 'qf-menu-controls' },
-    el('h2', { class: 'qf-menu-side__title', id: 'qf-menu-controls' }, 'Controls'),
-    el('dl', { class: 'qf-menu-keys' }, CONTROLS.map(([keys, what]) => [
-      el('dt', null, keys.split(' / ').map((k, i) => [i > 0 ? ' / ' : null, el('kbd', { class: 'qf-kbd' }, k)])),
-      el('dd', null, what),
-    ])),
-    el('p', { class: 'qf-menu-side__note' }, 'Gamepads work too. In the editor, press ', el('kbd', { class: 'qf-kbd' }, 'F5'), ' to playtest and ',
-      el('kbd', { class: 'qf-kbd' }, 'Esc'), ' to come back.'));
+/** The Controls card: keyboard keys and controller buttons side by side, redrawn when the controller changes. */
+function controlsCard(): { element: HTMLElement; destroy(): void } {
+  const table = el('div', { class: 'qf-menu-keys-table' });
+  const note = el('p', { class: 'qf-menu-side__note' });
+  const draw = (): void => {
+    const pad = labelPad();
+    table.replaceChildren(
+      el('div', { class: 'qf-menu-keys__head', 'aria-hidden': 'true' },
+        el('span'), el('span', null, 'Keyboard'), el('span', null, 'Controller')),
+      el('dl', { class: 'qf-menu-keys' }, GAME_CONTROLS.map(({ button, what, short }) => {
+        const keys = keyboardKeys(button);
+        const pads = padButtons(button, pad);
+        return el('div', { class: 'qf-menu-keys__row', title: what },
+          el('dt', { class: 'qf-menu-keys__kb', 'aria-label': `Keyboard: ${keys.join(' or ')}` },
+            keys.map((k) => el('kbd', { class: 'qf-kbd' }, k))),
+          el('dt', { class: 'qf-menu-keys__pad', 'aria-label': `Controller: ${pads.join(' or ')}` },
+            pads.map((k) => padGlyph(k))),
+          el('dd', null, short));
+      })));
+    note.replaceChildren(
+      knownPad() ? 'Your controller finds its way around this page too. ' : 'Plug in a controller and press a button to use it here and in the game. ',
+      'In the editor, press ', el('kbd', { class: 'qf-kbd' }, 'F5'), ' to playtest and ', el('kbd', { class: 'qf-kbd' }, 'Esc'), ' to come back.');
+  };
+  const offs = [onControlsChange(draw), onPadConnection(draw)];
+  draw();
+  const element = el('section', { class: 'qf-menu-side__card', 'aria-labelledby': 'qf-menu-controls' },
+    el('h2', { class: 'qf-menu-side__title', id: 'qf-menu-controls' }, 'Controls'), table, note);
+  return {
+    element,
+    destroy: () => {
+      for (const off of offs) off();
+    },
+  };
 }
 
 function aboutCard(): HTMLElement {
@@ -137,6 +157,8 @@ export function mountMenu(root: HTMLElement, nav: Nav): () => void {
 
   const getSample = (): Project => (sample ??= createSampleProject());
   const banner = createBanner();
+  const padBanner = createPadBanner();
+  const controls = controlsCard();
   const warning = el('div', { class: 'qf-menu-warning', role: 'status', hidden: true },
     icon('warning'),
     el('span', null, 'This browser is not letting Questforge store projects (private window?). New projects last only until this tab closes — export anything you want to keep.'));
@@ -302,18 +324,20 @@ export function mountMenu(root: HTMLElement, nav: Nav): () => void {
       fileInput),
     grid);
   const dropZone = fileDropZone((on) => projects.classList.toggle('qf-menu-projects--drop', on), (file) => void importFile(file));
+  const playSample = heroButton('play', 'Play the sample adventure', 'A short quest with a village, a dungeon, puzzles and a boss.', true, () => nav.go('#/play/sample'));
   const view = el('div', { class: 'qf-menu' },
     el('header', { class: 'qf-menu-hero' },
       el('h1', { class: 'qf-sr-only' }, 'Questforge'),
       el('div', { class: 'qf-menu-banner' }, banner.element),
       el('div', { class: 'qf-menu-ctas' },
-        heroButton('play', 'Play the sample adventure', 'A short quest with a village, a dungeon, puzzles and a boss.', true, () => nav.go('#/play/sample')),
+        playSample,
         heroButton('edit', 'Build your own', 'Start a new adventure — blank, or from a copy of the sample.', false, () => newProject()))),
     el('main', { class: 'qf-menu-main' },
+      padBanner.element,
       warning,
       el('div', { class: 'qf-menu-columns' },
         projects,
-        el('aside', { class: 'qf-menu-side' }, controlsCard(), aboutCard()))),
+        el('aside', { class: 'qf-menu-side' }, controls.element, aboutCard()))),
     el('footer', { class: 'qf-menu-footer' },
       el('span', null, `Questforge v${APP_VERSION}`),
       el('span', { class: 'qf-menu-footer__dot', 'aria-hidden': 'true' }, '·'),
@@ -323,6 +347,8 @@ export function mountMenu(root: HTMLElement, nav: Nav): () => void {
       el('span', { class: 'qf-menu-footer__dot', 'aria-hidden': 'true' }, '·'),
       createSoundToggle('qf-btn--ghost qf-menu-sound').element));
   root.appendChild(view);
+  // Back from a game played with the pad: focus starts on "Play the sample adventure", ring shown.
+  const padNav = startPadNav(view, { initial: () => playSample, autofocus: currentControls().device === 'gamepad' });
 
   void refresh();
   void storageIsPersistent().then((ok) => {
@@ -346,8 +372,11 @@ export function mountMenu(root: HTMLElement, nav: Nav): () => void {
   return () => {
     alive = false;
     clearTimeout(sampleTimer);
+    padNav.stop();
     dropZone();
     banner.destroy();
+    padBanner.destroy();
+    controls.destroy();
     view.remove();
   };
 }

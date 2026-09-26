@@ -50,3 +50,30 @@
 .qf-sound-toggle.is-muted { color: var(--qf-text-dim); }
 .qf-sound-toggle.is-muted .qf-icon { color: var(--qf-danger); }
 .qf-playtest__sound { flex: none; }
+
+/* Controller buttons in DOM text (menu hub, editor help, playtest bar): round face buttons, pills for the rest. */
+.qf-padbtn {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px;
+  background: #0b0a12; color: var(--qf-text); border: 1px solid var(--qf-border-2); border-bottom-width: 2px; border-radius: 10px;
+  font: 700 11px/1 var(--qf-font); white-space: nowrap; vertical-align: middle;
+}
+.qf-padbtn--round { width: 20px; padding: 0; border-radius: 50%; }
+.qf-padbtn--square { font-size: 17px; }
+.qf-padbtn--triangle { font-size: 12px; }
+
+/* Focus moved by a controller (padNav.ts): programmatic focus shows no :focus-visible ring, so a class draws one. */
+.qf-pad-focus {
+  outline: 3px solid var(--qf-accent) !important; outline-offset: 3px !important;
+  box-shadow: 0 0 0 7px #f0c04030, 0 0 22px #f0c04050 !important; scroll-margin: 28px;
+  animation: qf-pad-ring 0.9s ease-in-out infinite alternate;
+}
+@keyframes qf-pad-ring { to { outline-color: #fff4c4; } }
+.qf-pad-pressed { transform: translateY(1px) scale(0.97) !important; filter: brightness(1.2); }
+.qf-menu-cta.qf-pad-focus { border-color: var(--qf-accent); transform: translateY(-2px); }
+.qf-menu-choice input.qf-pad-focus + .qf-menu-choice__box {
+  outline: 3px solid var(--qf-accent); outline-offset: 3px; box-shadow: 0 0 0 7px #f0c04030, 0 0 22px #f0c04050;
+  animation: qf-pad-ring 0.9s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .qf-pad-focus, .qf-menu-choice input.qf-pad-focus + .qf-menu-choice__box { animation: none; }
+}

@@ -2,7 +2,9 @@
 // per-tick gameplay rules (entities, contact damage, touches, triggers, room
 // edges, pits, death), and the in-game sub-states (playing, paused, dialogue,
 // transition, game over). The Game (game.ts) owns the loop and the screens
-// before gameplay starts. OWNER: engine agent.
+// before gameplay starts. When the gamepad in use is unplugged (controllerLost),
+// the pause menu opens by itself as soon as the game may pause, with a notice
+// that stays until the next press. OWNER: engine agent.
 import type {
   DialoguePage, Dir, DungeonState, EntityInstance, ItemId, MusicId, Project, Room, SaveData, SfxId, WarpTarget, World,
 } from '../core/types';
@@ -33,6 +35,7 @@ import { DIALOGUE_SPANS, DialogueBox, type DialoguePosition } from './ui/dialogu
 import { PauseMenu } from './ui/pauseMenu';
 import { GameOverScreen } from './ui/gameOver';
 import { drawHud } from './ui/hud';
+import { rumble } from '../input/devices';
 
 /** What the session needs from its host (the Game). */
 export interface SessionHost {
@@ -104,6 +107,8 @@ export class Session implements GameServices {
   private paused = false;
   private over = false;
   private exited = false;
+  /** The gamepad in use was unplugged: pause (with the notice) as soon as the game may. */
+  private padLost = false;
   private entry: WarpTarget = { world: '', room: '', x: 0, y: 0 };
   /** Ids of entities defeated during this room visit (enemiesCleared bookkeeping). */
   private readonly defeated = new Set<string>();
@@ -135,7 +140,7 @@ export class Session implements GameServices {
     this.gameOverScreen = new GameOverScreen(audio);
     this.warpNow(start);
     // Built once a room exists so the menu may read room/dungeon state right away.
-    this.pauseMenu = new PauseMenu(this, { persists: host.mode === 'play' });
+    this.pauseMenu = new PauseMenu(this, { persists: host.mode === 'play', exitChord: host.mode === 'playtest' });
   }
 
   // ------------------------------------------------------------------ state
@@ -339,6 +344,7 @@ export class Session implements GameServices {
   tick(dt: number): void {
     if (this.exited) return;
     this.save.playTime += dt;
+    if (this.padLost) this.pauseForLostPad();
     if (this.over) this.tickGameOver(dt);
     else if (this.transition) this.tickTransition(dt);
     else if (this.dialogueBox.active) this.dialogueBox.update(dt, this.input);
@@ -347,7 +353,7 @@ export class Session implements GameServices {
   }
 
   private tickPlay(dt: number): void {
-    if (this.canPause() && (this.input.pressed('start') || this.input.pressed('select'))) {
+    if (this.canPause() && (this.input.pressed('start') || this.input.pressed('select')) && !this.exitChordHeld()) {
       this.openPause(this.input.pressed('start') ? 'items' : 'map');
       return;
     }
@@ -409,6 +415,11 @@ export class Session implements GameServices {
     if (!near) this.effect('fx.poof', 'play', spot.x, spot.y);
   }
 
+  /** Playtest: Start + Select held together is the host's exit chord (game.ts), not a pause. */
+  private exitChordHeld(): boolean {
+    return this.host.mode === 'playtest' && this.input.held('start') && this.input.held('select');
+  }
+
   /** Not while dying/falling/holding an item up, nor mid trigger sequence (a save must not split one). */
   private canPause(): boolean {
     const st = this.player.state;
@@ -418,6 +429,29 @@ export class Session implements GameServices {
   private openPause(page: 'items' | 'map'): void {
     this.pauseMenu.open(page);
     this.paused = true;
+  }
+
+  /** The gamepad in use was unplugged: the pause menu opens (ALttP / Switch style) once the game may pause. */
+  controllerLost(): void {
+    if (!this.exited && !this.over) this.padLost = true;
+  }
+
+  /**
+   * Open the menu with the CONTROLLER DISCONNECTED notice, or put the notice on
+   * the menu already open. Mid-dialogue, mid-transition or mid-sequence it waits;
+   * a press meanwhile (the player carrying on with the keyboard) cancels it.
+   */
+  private pauseForLostPad(): void {
+    if (this.over) {
+      this.padLost = false;
+      return;
+    }
+    if (this.paused) this.pauseMenu.showDisconnected();
+    else if (!this.transition && !this.dialogueBox.active && this.canPause()) {
+      this.openPause('items');
+      this.pauseMenu.showDisconnected();
+    } else if (!this.input.anyPressed()) return;
+    this.padLost = false;
   }
 
   private tickPause(dt: number): void {
@@ -717,6 +751,7 @@ export class Session implements GameServices {
     const message = prize ? `You got the ${prizeName(this.roomRt.world)}!` : applied.message;
     if (opts?.fanfare) {
       this.audio.sfx('fanfare');
+      rumble('tap');
       this.audio.duck(2);
       this.player.showItemGet(this.itemIcon(item));
       void this.dialogue(message).then(() => this.player.finishItemGet());

@@ -6,9 +6,13 @@ import {
   applyItem, dungeonState, hasItem, healSave, itemLevel, newSave, ownedEquippables, takeItem,
 } from '../src/game/state';
 import { DEFAULT_MAX_ARROWS, DEFAULT_MAX_BOMBS, DEFAULT_MAX_MAGIC, MAX_RUPEES } from '../src/core/constants';
+import { type ControlsInfo, substituteButtons } from '../src/input/devices';
 
 const W = 'w_dungeon';
 const W2 = 'w_other';
+/** A message as a keyboard player reads it (the dialogue box fills in {btn:x} tokens for the device in use). */
+const KEYBOARD: ControlsInfo = { device: 'keyboard', family: 'generic', padName: null, padIndex: null };
+const onKeyboard = (message: string): string => substituteButtons(message, { info: KEYBOARD });
 
 function project(mut?: (p: Project) => void): Project {
   const p = createBlankProject('State');
@@ -71,7 +75,7 @@ describe('applyItem: gear', () => {
   it('level items step up and cap at maxLevel', () => {
     const s = fresh();
     s.items = {};
-    expect(applyItem(s, W, 'sword').message).toMatch(/You got the Sword!.*Z/);
+    expect(onKeyboard(applyItem(s, W, 'sword').message)).toMatch(/You got the Sword!.*Z/);
     expect(itemLevel(s, 'sword')).toBe(1);
     expect(applyItem(s, W, 'sword').message).toMatch(/Sword/);
     expect(itemLevel(s, 'sword')).toBe(2);
@@ -118,12 +122,15 @@ describe('applyItem: gear', () => {
     }
   });
 
-  it('gives friendly messages with control hints', () => {
+  it('gives friendly messages with control hints (button tokens, named for the device when shown)', () => {
     const s = fresh();
-    expect(applyItem(s, W, 'bow').message).toBe('You got the Bow! Select it in the menu (Enter) and press C to shoot.');
-    expect(applyItem(s, W, 'boots').message).toMatch(/Dash Boots.*X/);
-    expect(applyItem(s, W, 'glove').message).toMatch(/Stone Gauntlet.*X/);
-    expect(applyItem(s, W, 'hookshot').message).toMatch(/Grapple Claw.*C/);
+    const bow = applyItem(s, W, 'bow').message;
+    expect(bow).toBe('You got the Bow! Select it in the menu ({btn:start}) and press {btn:y} to shoot.');
+    expect(onKeyboard(bow)).toBe('You got the Bow! Select it in the menu (Enter) and press C to shoot.');
+    expect(onKeyboard(applyItem(s, W, 'boots').message)).toMatch(/Dash Boots.*X/);
+    expect(onKeyboard(applyItem(s, W, 'glove').message)).toMatch(/Stone Gauntlet.*X/);
+    expect(onKeyboard(applyItem(s, W, 'hookshot').message)).toMatch(/Grapple Claw.*C/);
+    expect(applyItem(s, W, 'map').message).toBe('You found the Dungeon Map! Press {btn:select} to view it.');
   });
 
   it('equips the first equippable only when nothing is equipped', () => {
@@ -141,7 +148,7 @@ describe('applyItem: gear', () => {
 describe('applyItem: counters', () => {
   it('bombs default to 5, own the bag, cap at maxBombs, equip', () => {
     const s = fresh();
-    expect(applyItem(s, W, 'bombs').message).toBe('You got 5 Bombs! Select them in the menu (Enter) and press C to place one.');
+    expect(onKeyboard(applyItem(s, W, 'bombs').message)).toBe('You got 5 Bombs! Select them in the menu (Enter) and press C to place one.');
     expect(s.bombs).toBe(5);
     expect(s.items.bombs).toBe(1);
     expect(s.equipped).toBe('bombs');

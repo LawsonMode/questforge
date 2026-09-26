@@ -34,6 +34,10 @@ const ICONS = {
   close: { stroke: 'M4 4l8 8M12 4l-8 8' },
   sound: { stroke: 'M10.6 5.6a3.4 3.4 0 0 1 0 4.8M12.4 3.8a6 6 0 0 1 0 8.4', fill: 'M2 6h2.6L8.4 3v10L4.6 10H2z' },
   mute: { stroke: 'M10.5 6l3.5 4M14 6l-3.5 4', fill: 'M2 6h2.6L8.4 3v10L4.6 10H2z' },
+  gamepad: {
+    stroke: 'M5 4.5h6a3.5 3.5 0 0 1 3.4 4.2l-.5 2.6a1.6 1.6 0 0 1-2.8.7L9.8 10.5H6.2L4.9 12a1.6 1.6 0 0 1-2.8-.7l-.5-2.6A3.5 3.5 0 0 1 5 4.5zM5 6.6v2.8M3.6 8h2.8',
+    fill: 'M10 7.3a.8.8 0 1 0 1.6 0 .8.8 0 1 0-1.6 0zM11.6 8.9a.8.8 0 1 0 1.6 0 .8.8 0 1 0-1.6 0z',
+  },
 } satisfies Record<string, IconDef>;
 
 /** Names of the available icons. */

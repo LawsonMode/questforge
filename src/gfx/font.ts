@@ -1,4 +1,4 @@
-// Original 8x8 bitmap font (ASCII 32-126). OWNER: gfx agent.
+// Original 8x8 bitmap font (ASCII 32-126, plus four button shapes). OWNER: gfx agent.
 //
 // Design: caps are 7px tall (rows 0-6), lowercase x-height 5px (rows 2-6),
 // descender tails (g j p q y , ;) reach row 7. Spacing is PROPORTIONAL: every
@@ -7,7 +7,10 @@
 // measureText is exact: a line measures the sum of its advances minus the
 // trailing 1px gap, i.e. the drawn ink spans exactly [x, x + measureText).
 // Line breaks are '\n', '\r\n' or a lone '\r'; a tab counts as a space.
-// Rendering blits from per-colour glyph atlases (one 760x8 canvas per colour).
+// Beyond ASCII, the private-use characters U+E000-U+E003 draw the PlayStation
+// face-button shapes (cross, circle, square, triangle - input/devices.ts
+// PS_GLYPHS) at cap height and 7px wide, so a hint can name them inline.
+// Rendering blits from per-colour glyph atlases (one 792x8 canvas per colour).
 
 export const GLYPH_W = 8;
 export const GLYPH_H = 8;
@@ -119,15 +122,27 @@ const GLYPHS: readonly string[] = [
   '00000068b0000000', // ~
 ];
 
+/** First private-use character drawn as a button shape; the other SYMBOLS follow it in order. */
+const SYMBOL_FIRST = 0xe000;
+/** Button shapes in the same row format, U+E000 onwards (the order of input/devices.ts PS_GLYPHS). */
+const SYMBOLS: readonly string[] = [
+  '8244281028448200', // U+E000 cross
+  '3844828282443800', // U+E001 circle
+  'fe8282828282fe00', // U+E002 square
+  '102828444482fe00', // U+E003 triangle
+];
+
 /** Ink widths that can't be derived from the bitmask: space has no ink, '1' matches the other digits. */
 const WIDTH_OVERRIDES: Readonly<Record<string, number>> = { ' ': 3, '1': 5 };
 
+/** ASCII glyphs; the button shapes follow them in the tables and atlases (TOTAL glyphs in all). */
 const COUNT = LAST - FIRST + 1;
-const ROWS = new Uint8Array(COUNT * GLYPH_H);
-const WIDTHS = new Uint8Array(COUNT);
-const INK = new Uint8Array(COUNT);
-for (let g = 0; g < COUNT; g++) {
-  const hex = GLYPHS[g]!;
+const TOTAL = COUNT + SYMBOLS.length;
+const ROWS = new Uint8Array(TOTAL * GLYPH_H);
+const WIDTHS = new Uint8Array(TOTAL);
+const INK = new Uint8Array(TOTAL);
+for (let g = 0; g < TOTAL; g++) {
+  const hex = g < COUNT ? GLYPHS[g]! : SYMBOLS[g - COUNT]!;
   let w = 0;
   for (let r = 0; r < GLYPH_H; r++) {
     const bits = parseInt(hex.slice(r * 2, r * 2 + 2), 16);
@@ -135,7 +150,7 @@ for (let g = 0; g < COUNT; g++) {
     for (let x = 0; x < GLYPH_W; x++) if (bits & (0x80 >> x)) w = Math.max(w, x + 1);
   }
   INK[g] = w > 0 ? 1 : 0;
-  WIDTHS[g] = WIDTH_OVERRIDES[String.fromCharCode(FIRST + g)] ?? w;
+  WIDTHS[g] = (g < COUNT ? WIDTH_OVERRIDES[String.fromCharCode(FIRST + g)] : undefined) ?? w;
 }
 
 const FALLBACK = '?'.charCodeAt(0) - FIRST;
@@ -143,9 +158,10 @@ const TAB = 9;
 const LF = 10;
 const CR = 13;
 
-/** Glyph for a char code: tabs draw as spaces, anything else outside ASCII 32-126 as '?'. */
+/** Glyph for a char code: tabs draw as spaces, anything else outside ASCII 32-126 and the button shapes as '?'. */
 function glyphIndex(code: number): number {
   if (code >= FIRST && code <= LAST) return code - FIRST;
+  if (code >= SYMBOL_FIRST && code < SYMBOL_FIRST + SYMBOLS.length) return COUNT + code - SYMBOL_FIRST;
   return code === TAB ? 0 : FALLBACK;
 }
 
@@ -180,13 +196,13 @@ let mask: HTMLCanvasElement | null = null;
 function glyphMask(): HTMLCanvasElement {
   if (mask) return mask;
   const c = document.createElement('canvas');
-  c.width = COUNT * GLYPH_W;
+  c.width = TOTAL * GLYPH_W;
   c.height = GLYPH_H;
   const ctx = c.getContext('2d');
   if (ctx) {
     const img = ctx.createImageData(c.width, c.height);
     const px = new Uint32Array(img.data.buffer);
-    for (let g = 0; g < COUNT; g++) {
+    for (let g = 0; g < TOTAL; g++) {
       for (let r = 0; r < GLYPH_H; r++) {
         const bits = ROWS[g * GLYPH_H + r]!;
         for (let x = 0; x < GLYPH_W; x++) if (bits & (0x80 >> x)) px[r * c.width + g * GLYPH_W + x] = 0xffffffff;

@@ -2,7 +2,9 @@
 // CanvasRenderer and shows the bottom of the 256x224 screen at 2x, so the box,
 // speaker plate, wrapping and choice cursor look exactly as in game. "▶ Play"
 // types the dialogue out in real time (click / Space / Z to advance, ↑↓ to
-// choose); otherwise the selected page is shown fully revealed.
+// choose); otherwise the selected page is shown fully revealed. {btn:x} codes
+// show as the button names of the device in use (redrawn when it changes) or
+// of the device picked under "Buttons as".
 import type { EditorContext } from '../context';
 import type { AudioApi, Button, InputState } from '../../game/api';
 import type { DialoguePage, MusicId, SfxId } from '../../core/types';
@@ -13,8 +15,9 @@ import { boxLength, layoutDialogue } from '../../game/ui/dialogueLayout';
 import { getAudio } from '../../audio/audio';
 import { SCREEN_H, SCREEN_W, STEP, TILE } from '../../core/constants';
 import { T } from '../../content/ids';
-import { button, el, pixelCanvas } from '../ui/dom';
-import { PREVIEW_NAME } from './dialogueModel';
+import { button, el, pixelCanvas, select } from '../ui/dom';
+import { onControlsChange, type ControlsInfo, type LabelOpts } from '../../input/devices';
+import { PREVIEW_NAME, withButtons } from './dialogueModel';
 
 /** Screen rows shown: the dialogue box, its speaker plate and a strip of backdrop. */
 const VIEW_Y = 126;
@@ -24,6 +27,26 @@ const SCALE = 2;
 const REVEAL_TICKS_PER_CHAR = 0.5;
 const MAX_TICKS = 2000;
 const BACKDROP = '#205028';
+
+/** Whose button names {btn:x} codes show: the device in use, or a chosen one. */
+type ButtonsAs = 'auto' | 'keyboard' | 'xbox' | 'playstation' | 'nintendo';
+
+const BUTTONS_AS: readonly { value: ButtonsAs; label: string }[] = [
+  { value: 'auto', label: 'Device in use' },
+  { value: 'keyboard', label: 'Keyboard (Z X C)' },
+  { value: 'xbox', label: 'Controller (A B X Y)' },
+  { value: 'playstation', label: 'Controller (✕ ○ □ △)' },
+  { value: 'nintendo', label: 'Controller (B A Y X)' },
+];
+
+/** Label options for a "Buttons as" choice (undefined = the device in use). */
+function labelOpts(as: ButtonsAs): LabelOpts | undefined {
+  if (as === 'auto') return undefined;
+  const info: ControlsInfo = as === 'keyboard'
+    ? { device: 'keyboard', family: 'generic', padName: null, padIndex: null }
+    : { device: 'gamepad', family: as, padName: null, padIndex: null };
+  return { info };
+}
 
 const KEY_BUTTONS: Readonly<Record<string, Button>> = {
   Space: 'a', Enter: 'a', KeyZ: 'a', KeyX: 'a', KeyC: 'a', ArrowUp: 'up', ArrowDown: 'down', KeyW: 'up', KeyS: 'down',
@@ -94,7 +117,12 @@ export class DialoguePreview {
   private readonly playBtn: HTMLButtonElement;
   private readonly prevBtn: HTMLButtonElement;
   private readonly nextBtn: HTMLButtonElement;
+  /** The pages as written (with {btn:x} codes). */
+  private source: DialoguePage[] = [];
+  /** The pages as the game shows them (codes replaced). */
   private pages: DialoguePage[] = [];
+  private buttonsAs: ButtonsAs = 'auto';
+  private readonly offControls: () => void;
   private pageIndex = 0;
   private boxIndex = 0;
   private playing: DialogueBox | null = null;
@@ -114,24 +142,47 @@ export class DialoguePreview {
     this.playBtn = button('▶ Play', () => (this.playing ? this.stop() : this.play()), { small: true, kind: 'primary', title: 'Type the dialogue out like the game does, from this page on' });
     this.prevBtn = button('‹ Box', () => this.stepBox(-1), { small: true, title: 'Previous box of this page (long pages are split into boxes)' });
     this.nextBtn = button('Box ›', () => this.stepBox(1), { small: true, title: 'Next box of this page' });
+    const buttonsAs = select(BUTTONS_AS, this.buttonsAs, (v) => {
+      this.buttonsAs = v;
+      this.refreshButtons();
+    }, { title: 'Button codes like {btn:a} show as the keys or controller buttons of this device' });
+    buttonsAs.classList.add('qf-dlg-preview__as');
     this.element = el('div', { class: 'qf-dlg-preview' },
       el('div', { class: 'qf-dlg-preview__screen' }, this.view),
-      el('div', { class: 'qf-dlg-preview__bar' }, this.playBtn, this.prevBtn, this.nextBtn, this.status));
+      el('div', { class: 'qf-dlg-preview__bar' }, this.playBtn, this.prevBtn, this.nextBtn, this.status),
+      el('label', { class: 'qf-dlg-preview__opts' }, el('span', null, 'Buttons as'), buttonsAs));
+    // The player switched device (or swapped the face buttons): codes name other buttons now.
+    this.offControls = onControlsChange(() => {
+      if (this.buttonsAs === 'auto') this.refreshButtons();
+    });
   }
 
   /** Show page `index` of `pages` fully revealed (restarts at its first box when the page changes). */
   show(pages: DialoguePage[], index: number): void {
     if (this.playing) this.stop();
     if (index !== this.pageIndex) this.boxIndex = 0;
-    this.pages = pages;
+    this.source = pages;
+    this.pages = this.withCodes(pages);
     this.pageIndex = index;
     this.drawStatic();
   }
 
   /** Stop playback and release resources. */
   destroy(): void {
+    this.offControls();
     this.stop();
     this.renderer.dispose();
+  }
+
+  private withCodes(pages: readonly DialoguePage[]): DialoguePage[] {
+    const opts = labelOpts(this.buttonsAs);
+    return pages.map((pg) => withButtons(pg, opts));
+  }
+
+  /** Button names changed: redraw the static page (a playback in progress keeps its text). */
+  private refreshButtons(): void {
+    this.pages = this.withCodes(this.source);
+    if (!this.playing) this.drawStatic();
   }
 
   // ---------------------------------------------------------------- static

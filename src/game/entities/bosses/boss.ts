@@ -3,7 +3,8 @@
 // clamping, keeping out of doorways, never getting trapped by a solid that
 // closes on it, and the scripted death — timed explosion bursts, a heart
 // container, then the default Entity.die() (persistDefeat flag + 'defeated'
-// event). OWNER: bosses agent.
+// event). The gamepad taps on a weak-point hit and rumbles hard at the finale.
+// OWNER: bosses agent.
 import type { EntityInstance } from '../../../core/types';
 import type { GameServices, Hit } from '../../api';
 import type { Entity } from '../../entity';
@@ -13,6 +14,7 @@ import { findFreeSpot } from '../../spot';
 import { entityInfo } from '../../../core/catalog';
 import { clamp, type Rect, type Vec } from '../../../core/math';
 import { attackVector, bossTinks, overlapArea, type Verdict } from './logic';
+import { rumble } from '../../../input/devices';
 
 /** Seconds a boss holds still after the room is entered. */
 export const INTRO_TIME = 1;
@@ -195,6 +197,7 @@ export abstract class Boss extends Enemy {
     part.invuln = part.invulnOnHit;
     this.wounded = part;
     this.game.audio.sfx('bossHit');
+    rumble('tap');
     if (this.hp <= 0) this.startDeath();
   }
 
@@ -250,6 +253,7 @@ export abstract class Boss extends Enemy {
     this.blink(false);
     if (this.prop<boolean>('dropHeart', true)) this.dropHeartContainer();
     this.game.camera.shake(0.5, 3);
+    rumble('heavy');
     // No poof or random loot (the finale replaces both); Entity.die still sets the
     // persistDefeat flag and emits 'defeated'.
     this.team = 'neutral';

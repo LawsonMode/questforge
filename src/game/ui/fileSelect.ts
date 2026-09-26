@@ -5,19 +5,25 @@
 // Confirm is A/Y or the Enter key; cancel is B or the Escape key. Enter and
 // Escape both press Start, so Start only counts when typed() tells which key it
 // was: '\n' (Enter) confirms, '\u001b' (Escape, once the input layer reports
-// it) cancels, and a Start with neither (a gamepad Start, or an unreported
-// Escape) is ignored - it can never erase or create a file by accident.
-// Name entry takes both the letter grid (d-pad + A/Y to pick, B deletes, END
+// it) cancels. A gamepad's Start (Start with neither, from the pad in use)
+// opens the file under the cursor and finishes a name, but never confirms an
+// erase, so it can never erase a file by accident; any other Start is ignored.
+// Name entry takes both the letter grid (d-pad or stick + A/Y to pick, with
+// auto-repeat while a direction is held; B deletes; END or a pad's Start
 // finishes) and the keyboard (input.typed(): letters, Backspace, Enter; Escape
 // cancels the entry). The keys that double as pad buttons (X K Space = A, Z J = B,
 // C L = Y) type their letter unless the grid cursor was the last thing moved, in
 // which case they act as the buttons; a key that typed a character is never also
-// a button.
+// a button. Hints name the buttons of the device in use; a gamepad player is also
+// told to click or press a key while browser audio is still locked.
 import type { ItemId, Project, SaveData } from '../../core/types';
 import type { AudioApi, Button, InputState, Renderer } from '../api';
+import { currentControls } from '../../input/devices';
 import {
-  GOLD_BANDS, UI, bigText, drawFrame, drawHearts, drawItem, drawPointer, formatTime, keyLabel, outlineText,
+  GOLD_BANDS, SOUND_HINT, UI, bigText, drawFrame, drawHearts, drawItem, drawPointer, formatTime, keyLabel, liveText,
+  needsSoundHint, outlineText,
 } from './theme';
+import { padStart, repeated } from './menuInput';
 
 export type FileSelectResult =
   | { kind: 'none' }
@@ -55,9 +61,15 @@ const BUTTON_KEYS: readonly (readonly [Button, string])[] = [['a', 'xk '], ['b',
 const ENTER = '\n';
 const ESC = '\u001b';
 
-const SELECT_HINT = `${keyLabel('a')} / ${keyLabel('start')}: START   ${keyLabel('b')}: BACK`;
-const ERASE_HINT = `${keyLabel('a')}: ERASE   ${keyLabel('b')}: CANCEL`;
-const NAME_HINT = `TYPE OR PICK LETTERS   ${keyLabel('start')}: DONE`;
+/** Screen y of the gamepad sound hint: under the slot list, and between the name box and the grid. */
+const SOUND_HINT_Y = { list: 197, name: 81 } as const;
+
+const selectHint = liveText(() => `${keyLabel('a')} / ${keyLabel('start')}: START   ${keyLabel('b')}: BACK`);
+const eraseHint = liveText(() => `${keyLabel('a')}: ERASE   ${keyLabel('b')}: CANCEL`);
+/** Name entry: typing on a keyboard; the grid buttons on a gamepad. */
+const nameHint = liveText(() => (currentControls().device === 'gamepad'
+  ? `${keyLabel('a')}: PICK   ${keyLabel('b')}: DELETE   ${keyLabel('start')}: DONE`
+  : `TYPE OR PICK LETTERS   ${keyLabel('start')}: DONE`));
 
 export class FileSelect {
   private readonly audio: AudioApi;
@@ -108,7 +120,8 @@ export class FileSelect {
     drawBanner(r, erasing ? 'ERASE WHICH FILE?' : 'CHOOSE A FILE');
     for (let i = 0; i < SLOTS; i++) this.drawSlot(r, i);
     this.drawOption(r, erasing ? 'CANCEL' : 'ERASE A FILE');
-    drawHint(r, erasing ? ERASE_HINT : SELECT_HINT);
+    drawHint(r, erasing ? eraseHint() : selectHint());
+    this.drawSoundHint(r, SOUND_HINT_Y.list);
     if (this.mode === 'confirmErase') this.drawConfirm(r);
   }
 
@@ -120,7 +133,7 @@ export class FileSelect {
       this.audio.sfx('menuClose');
       return { kind: 'back' };
     }
-    if (!confirmed(input)) return NONE;
+    if (!confirmed(input) && !padStart(input)) return NONE;
     if (this.cursor === OPTION) {
       if (!this.saves.some(Boolean)) return this.fail();
       this.audio.sfx('menuSelect');
@@ -212,6 +225,7 @@ export class FileSelect {
       }
     }
     if (typedAny) return NONE;
+    if (padStart(input)) return this.finishName();
     if (this.moveGrid(input)) return NONE;
     if (input.pressed('a') || input.pressed('y')) return this.pick();
     return input.pressed('b') ? this.back() : NONE;
@@ -233,9 +247,10 @@ export class FileSelect {
     return NONE;
   }
 
+  /** D-pad / stick / arrows move the grid cursor, repeating while held. True if it moved. */
   private moveGrid(input: InputState): boolean {
-    const dx = (input.pressed('right') ? 1 : 0) - (input.pressed('left') ? 1 : 0);
-    const dy = (input.pressed('down') ? 1 : 0) - (input.pressed('up') ? 1 : 0);
+    const dx = (repeated(input, 'right') ? 1 : 0) - (repeated(input, 'left') ? 1 : 0);
+    const dy = (repeated(input, 'down') ? 1 : 0) - (repeated(input, 'up') ? 1 : 0);
     if (dx === 0 && dy === 0) return false;
     const rows = GRID_ROWS.length + 1;
     this.gy = (this.gy + dy + rows) % rows;
@@ -374,7 +389,12 @@ export class FileSelect {
       if (selected) this.drawCellCursor(r, x0, sy - 3, w, 13);
       outlineText(r, s.label, x0 + w / 2, sy, selected ? UI.gold : UI.mid, { align: 'center' });
     });
-    drawHint(r, NAME_HINT);
+    drawHint(r, nameHint());
+    this.drawSoundHint(r, SOUND_HINT_Y.name);
+  }
+
+  private drawSoundHint(r: Renderer, y: number): void {
+    if (needsSoundHint(this.audio)) outlineText(r, SOUND_HINT, r.width / 2, y, UI.gold, { align: 'center' });
   }
 
   private drawCursor(r: Renderer, x: number, y: number): void {

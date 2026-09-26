@@ -12,6 +12,7 @@ sprite pixels or trademarks (no "Zelda", "Link", "Hyrule", "Triforce", "Ganon", 
 - `npx tsc --noEmit` — typecheck · `npx vitest run [file]` — unit tests
 - `node scripts/e2e.mjs <scenario…>` — headless Chrome e2e (see header of `scripts/e2e.mjs`); screenshots land in
   `e2e-out/<scenario>/NN-label.png` and can be viewed with an image viewer / the Read tool. `--all` runs everything.
+  Headless Chrome has no gamepads: `e2e/lib/fakepad.mjs` fakes one (see [Controllers](#controllers-srcinputdevicests)).
 
 ## Geometry, time & units (non-negotiable)
 - Screen **256×224**, tiles **16×16**, one "screen" = **16×14 tiles**. Rooms are `gw×gh` screens (1..4 each).
@@ -36,6 +37,7 @@ sprite pixels or trademarks (no "Zelda", "Link", "Hyrule", "Triforce", "Ganon", 
 | `src/core/constants.ts`, `math.ts`, `rng.ts`, `events.ts`, `stub.ts` | Shared primitives |
 | `scripts/e2e.mjs`, `tests/contract.test.ts`, `tests/tools/*` | Test harness, contract tests, node PNG sheet renderer |
 | `src/dev/arena.ts` | e2e helper: `startArena(opts)` builds & runs a one-room project in the page |
+| `src/input/devices.ts` | Input devices (1.1.0): device in use, pad families, button labels & glyphs, `{btn:x}` tokens, controller prefs, rumble |
 
 During the build, stub functions threw `NOT_IMPLEMENTED: …` until their owner implemented them. At 1.0.0 every contract
 function is implemented: `notImplemented()` stays defined in `src/core/stub.ts` as the marker and **nothing calls it**
@@ -52,6 +54,8 @@ exports, private helpers, and new files inside the areas you own.
 - `api.ts`: `AudioApi` has `currentMusic`, `setVolumes` and `setMuted`; the player's sound preferences are applied through them.
 - Removed at release (provably unused): `math.centered`, `math.rectUnion`, `dom.colorInput` (colours must go through the
   palette sanitiser), `registry.registeredTypes`, `constants.APP_NAME`, `build.ACTOR_SPRITE_TAGS`.
+- 1.1.0 (controllers): new shared module `src/input/devices.ts` (below). `game/keys.ts` `keyLabel` / `keyWord` delegate to
+  it, so their result **changes with the device in use**; `PadConnection.wasInUse` marks the unplugging of the pad in use.
 
 ## Module ownership
 | Area | Files (owner may add new files under these paths) | Agent |
@@ -96,6 +100,58 @@ Tests: put unit tests in `tests/<area>-*.test.ts`, e2e scenarios in `e2e/<area>-
   layer names, fractional cells and non-integer tile ids; trigger `setTile` actions with a bad layer / cell / tile are
   skipped with one warning; heals and hits with non-finite amounts change nothing.
 
+## Controllers (`src/input/devices.ts`)
+One module knows which device the player is using and how to name its buttons; the game, the menu hub and the
+editor all read it.
+- **Device in use** = whichever was used last. `Input` calls `noteKeyboard()` on a mapped key and `notePad(index, id)`
+  when a pad button or stick moves; `trackDevices()` (called once in `main.ts`) adds global listeners so DOM views notice
+  keyboard use and pads being plugged in or out. `currentControls()` → `{ device: 'keyboard' | 'gamepad', family:
+  'xbox' | 'playstation' | 'nintendo' | 'generic', padName, padIndex }`, classified from `Gamepad.id` (`padFamily`,
+  `padDisplayName`). `onControlsChange(fn)` fires on a device / pad / prefs change; `onPadConnection(fn)` on plug in /
+  out, with `wasInUse` true when the pad in use went away (the device falls back to the keyboard first).
+- **Buttons by SNES position**: bottom = sword `b`, right = action `a`, left = item `y`, top = `x` (the game gives
+  `x` no job), LB/RB = `l`/`r`. `buttonLabel(b)` names the physical button for the device in use (`Z` / `A` / PS cross
+  / `MENU`…), `buttonWord(b)` the same inside a sentence (`Enter`, `Options`), `moveLabel()` / `moveWord()` movement
+  (`ARROWS` / `D-PAD` on key caps, `arrow keys` / `D-pad` in sentences). PlayStation shapes are the private-use
+  characters `PS_GLYPHS` (U+E000–E003), which the bitmap font (`gfx/font.ts`) draws as 7×7 glyphs; DOM text asks for
+  real Unicode shapes with `{ unicode: true }` (✕ ○ □ △). **Labels change when the player switches device: build hint
+  strings at draw time, never at module load.** `game/keys.ts` adds `labelsVersion()` and `liveText(build)`, which
+  rebuilds a hint only after a change.
+- **Tokens**: `{btn:<name>}` in dialogue text, speaker names, choice options, a sign's own text and the item-get
+  messages (`state.ts`) is replaced by `substituteButtons(text)` with the word for the device in use. Names: `a`, `b`,
+  `y`, `x`, `l`, `r`, `start`, `select`, `up`, `down`, `left`, `right` and `move`, case-insensitive; an unknown token
+  stays as written. The dialogue box substitutes them when it lays out a page (`game/ui/dialogueLayout.ts`, before
+  `{name}`, so a hero named like a token stays as typed) and lays an open dialogue out again, same box and reveal, when
+  the device changes. The dialogue editor previews, measures and inserts them (`editor/dialogue/dialogueModel.ts`
+  `BUTTON_TOKENS`, `withButtons`); it does not offer `{btn:x}` (no job, no keyboard key).
+- **Preferences** (setting `controller`): `controllerPrefs()` / `setControllerPrefs({ vibration, swapFaceButtons })`.
+  `swapFaceButtons` trades the bottom and right face buttons: `Input.pollPads` honours it for the game, and the hub's
+  pad navigation reads the same mapping through `faceOf(b)`, so both behave alike. `rumble('tap' | 'hit' | 'heavy')`
+  plays a dual-rumble effect on the pad in use (no-op on the keyboard, without support or with vibration off); the game
+  rumbles on hurt, pit falls, dash bonks, bombs (`heavy` near the hero), boss hits and finales and item fanfares, never
+  every frame.
+- **Game**: the pause menu's third page, CONTROLS (`game/ui/controlsPage.ts`, L/R order items → map → controls), shows
+  the device, a button reference and the VIBRATION / SWAP toggles; after a swap it waits for the face button to be
+  released. Menus auto-repeat a held direction and tell a pad's Start from Enter (`game/ui/menuInput.ts`). Unplugging
+  the pad in use calls `Session.controllerLost()`: the pause menu opens with a CONTROLLER DISCONNECTED notice as soon as
+  the game may pause. In a playtest, Start + Select held for `EXIT_HOLD` (1 s) calls `onExit`, with a LEAVING PLAYTEST
+  bar after 0.3 s. `onExit` may run **inside a tick**: `Game` stops ticking and drawing that frame once it has been
+  stopped, and the editor's playtest host closes after the frame anyway.
+- **Menu hub**: `src/app/padNav.ts` drives the DOM views (menu, message pages, gallery) with a pad: spatial focus moves
+  with repeat, a focus-ring class, the action button or Start activates, the sword button closes a dialog or goes back,
+  the right stick scrolls, open dialogs trap focus. It polls only while a pad is connected and stops on unmount, acts
+  on **release** (a held button never reaches the next view) and adds no window/document listeners.
+  `src/app/padBanner.ts` is the hub's controller banner (Button layout Classic / Swapped, Vibration);
+  `src/app/controls.ts` holds the device-aware control lists shared by the menu's Controls card, the editor help and
+  the playtest bar. `main.ts` shows one toast per connect / disconnect.
+- **Browser audio**: a gamepad press is not a user activation, so the title and file select show "CLICK OR PRESS A KEY
+  FOR SOUND" while audio is locked and a pad is in use.
+- **e2e**: `e2e/lib/fakepad.mjs` (not a scenario; the harness runs only top-level `e2e/*.mjs`). Call
+  `installFakePad(t.page, { id: PAD_IDS.xbox | playstation | nintendo | generic })` **before** the first `t.goto`; the pad
+  starts connected and fires `gamepadconnected` on load. `padPress(t, PAD.right)`, `padHold(t, [PAD.start, PAD.select],
+  1200)`, `padStick(t, x, y, ms)`; `window.__fakePad.disconnect()` / `connect()`; `window.__fakePadRumble` records the
+  rumble effects played. Examples: `e2e/pad-basics.mjs`, `pad-game*.mjs`, `pad-app*.mjs`.
+
 ## Persistence
 - Projects and save games (3 slots per project) live in IndexedDB (`questforge` database), with an in-memory fallback
   when IndexedDB is blocked. Imports go through `migrateProject` (sanitise, clamp — e.g. room grid positions to ±256
@@ -103,7 +159,8 @@ Tests: put unit tests in `tests/<area>-*.test.ts`, e2e scenarios in `e2e/<area>-
   start location landing on void, solid, deep-water or pit ground).
 - Per-browser settings use `getSetting` / `setSetting` (localStorage, key prefix `questforge:`). `sound` holds
   `{ music, sfx, muted }`: the pause menu's SOUND panel sets the levels, the menu hub and editor playtest bar toggles set
-  `muted` (`src/game/soundPrefs.ts`, `src/app/soundToggle.ts`).
+  `muted` (`src/game/soundPrefs.ts`, `src/app/soundToggle.ts`). `controller` holds `{ vibration, swapFaceButtons }`,
+  set from the pause menu's CONTROLS page or the hub's controller banner (`src/input/devices.ts`).
 
 ## Feel targets (ALttP-like tuning)
 - Hero walk **88 px/s** (diagonal normalised ×0.75 per axis ≈ ALttP), dash **180 px/s** after a 0.35 s wind-up.
@@ -115,9 +172,11 @@ Tests: put unit tests in `tests/<area>-*.test.ts`, e2e scenarios in `e2e/<area>-
 
 ## Controls
 Arrows/WASD move · **Z** sword · **X** action (talk / read / lift / throw / dash / open) · **C** use item ·
-**Enter** pause & inventory · **Shift/M** map · **Q/E** flip pause pages · Escape leaves playtest. Alternates: J/K/L for
-Z/X/C, Space = action. Gamepad: standard mapping. Editor: F5 playtest (Shift+F5 from the selected room), Ctrl+S, Ctrl+Z/Y,
-1–4 tabs, ? help.
+**Enter** pause & inventory · **Shift/M** map · **Q/E** flip pause pages (items → map → controls) · Escape leaves
+playtest. Alternates: J/K/L for Z/X/C, Space = action. Gamepad (standard mapping, SNES positions): bottom = sword,
+right = action, left = item, Start = pause, Select = map, LB/RB = pages, d-pad or left stick = move; hold Start + Select
+1 s to leave a playtest; Swap A/B and vibration on the CONTROLS page. Editor: F5 playtest (Shift+F5 from the selected
+room), Ctrl+S, Ctrl+Z/Y, 1–4 tabs, ? help; the editor itself is mouse & keyboard.
 
 ## Routes (e2e + menu)
 `#/` menu · `#/play/<id|sample>` · `#/playtest/<id|sample>?w=&r=&x=&y=` · `#/edit/<id|sample>` · `#/gallery`.

@@ -11,6 +11,7 @@ import { findRoom, neighborRoom, roomCols, roomRows } from '../src/core/project'
 import { footprint, propOf } from '../src/core/catalog';
 import { terrainPieces } from '../src/core/autotile';
 import { wrapText } from '../src/gfx/font';
+import { type ControlsInfo, type PadFamily, substituteButtons } from '../src/input/devices';
 import { PIECES_PER_HEART } from '../src/game/state';
 import { SAMPLE_PROJECT_ID, SCREEN_H, SCREEN_W, TILE } from '../src/core/constants';
 import type { Collision, Dir, EntityInstance, PropValue, Room, Terrain, WarpTarget, World } from '../src/core/types';
@@ -132,10 +133,16 @@ describe('sample project: references', () => {
     expect(npcsWithoutWords.map(({ e }) => e.id)).toEqual([]);
   });
 
-  it('every dialogue page fits in one three-line box (even with a six-letter name)', () => {
-    const long = p.dialogues.flatMap((d) => d.pages
-      .filter((page) => wrapText(page.text.split('{name}').join('WWWWWW'), 204).length > 3)
-      .map((page) => `${d.id}: ${page.text.slice(0, 40)}...`));
+  it('every dialogue page fits in one three-line box (even with a six-letter name, on every device)', () => {
+    // {btn:x} tokens show as the keys or pad buttons of the device in use.
+    const pad = (family: PadFamily): ControlsInfo => ({ device: 'gamepad', family, padName: 'Pad', padIndex: 0 });
+    const devices: ControlsInfo[] = [
+      { device: 'keyboard', family: 'generic', padName: null, padIndex: null },
+      pad('xbox'), pad('playstation'), pad('nintendo'), pad('generic'),
+    ];
+    const long = devices.flatMap((info) => p.dialogues.flatMap((d) => d.pages
+      .filter((page) => wrapText(substituteButtons(page.text, { info }).split('{name}').join('WWWWWW'), 204).length > 3)
+      .map((page) => `${info.device}/${info.family} ${d.id}: ${page.text.slice(0, 40)}...`)));
     expect(long).toEqual([]);
   });
 

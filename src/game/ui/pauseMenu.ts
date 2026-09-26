@@ -1,5 +1,6 @@
 // Pause screen: item grid (choose the Y item), quest status (hearts, pieces,
-// crystals, passive items), dungeon map (with map/compass), Save / Save & Quit.
+// crystals, passive items), dungeon map (with map/compass), controls and
+// controller options, Save / Save & Quit.
 // OWNER: triggers+UI agent.
 //
 // Opens with a quick slide-down under the HUD (which stays visible on top).
@@ -8,32 +9,46 @@
 // RESUME, which only A/Y confirm. A playtest never writes a save, so there the
 // options are QUIT / SOUND / RESUME. SOUND opens a small panel in the options
 // window: MUSIC and SFX volume levels (left/right; kept per browser, see
-// soundPrefs.ts) and BACK (B also goes back). L or R flip between the items and
-// map pages, and so does Select - except in a menu opened on the map with
-// Select, where Select closes it again (a map toggle). Start and B close the menu.
+// soundPrefs.ts) and BACK (B also goes back). A third page, CONTROLS
+// (controlsPage.ts), shows the device in use, its buttons and the controller
+// options. L and R flip through the pages (items -> map -> controls, wrapping);
+// Select toggles between the items and map pages - except in a menu opened on
+// the map with Select, where Select closes it again (a map toggle). Start and B
+// close the menu. Hints name the buttons of the device in use, following a
+// switch at once. When the gamepad in use is unplugged the session opens the
+// menu with a CONTROLLER DISCONNECTED notice (showDisconnected), which the next
+// press of any button or key dismisses. In a playtest, Start + Select held
+// together is the exit chord (game.ts): the menu ignores both meanwhile.
 import type { ItemId } from '../../core/types';
 import type { GameServices, InputState, Renderer } from '../api';
 import { EQUIPPABLE_ITEMS } from '../../core/types';
 import { ITEM_INFO } from '../../content/ids';
 import { wrapText } from '../../gfx/font';
 import { ownedEquippables } from '../state';
+import { labelsVersion } from '../keys';
 import { SOUND_LEVELS, type SoundPrefs, applySoundPrefs, loadSoundPrefs, saveSoundPrefs } from '../soundPrefs';
 import { drawHud } from './hud';
 import { MAP_FRAME, MapPage } from './pauseMap';
+import { ControlsPage } from './controlsPage';
 import {
-  CENTER, RIGHT, SCREEN, UI, drawFrame, drawHeartPieces, drawHearts, drawItem, drawPointer, drawTitlePlate, formatTime, keyLabel,
-  outlineText,
+  CENTER, RIGHT, SCREEN, UI, drawFrame, drawHeartPieces, drawHearts, drawItem, drawPointer, drawTitlePlate, fitText, formatTime,
+  keyLabel, liveText, outlineText,
 } from './theme';
 
 export type PauseResult = 'none' | 'resume' | 'save' | 'saveQuit';
 
-type Page = 'items' | 'map';
+type Page = 'items' | 'map' | 'controls';
 type OptionResult = 'save' | 'saveQuit' | 'sound' | 'resume';
 
 export interface PauseMenuOptions {
   /** Whether saving writes a save file (false in playtest: no SAVE option, SAVE & QUIT reads QUIT). */
   persists?: boolean;
+  /** Start + Select held together is the host's exit chord (playtest): ignore both while it is held. */
+  exitChord?: boolean;
 }
+
+/** Pages in L/R order (R = next, L = previous, wrapping). */
+const PAGES: readonly Page[] = ['items', 'map', 'controls'];
 
 const SLIDE_TIME = 0.18;
 const SAVED_TOAST = 1.6;
@@ -69,22 +84,25 @@ const CORNERS: readonly (readonly [number, number])[] = [[-1, -1], [1, -1], [-1,
 const PASSIVE_MISSING = { screen: true, alpha: 0.15 } as const;
 const NO_CRYSTAL = { screen: true, alpha: 0.3 } as const;
 const NO_ITEMS = 'No items to equip yet.';
-const CHOOSE_ITEM = `Choose an item for the ${keyLabel('y')} button.`;
-
-const FLIP_KEYS = `${keyLabel('l')}/${keyLabel('r')}`;
-const ITEMS_HINT = `${FLIP_KEYS} OR ${keyLabel('select')}: MAP   ${keyLabel('start')}: CLOSE`;
-/** Items page of a menu opened with Select (which then closes it instead of flipping pages). */
-const ITEMS_HINT_MAP_TOGGLE = `${FLIP_KEYS}: MAP   ${keyLabel('select')}: CLOSE`;
+const chooseItem = liveText(() => `Choose an item for the ${keyLabel('y')} button.`);
+/** The CONTROLLER DISCONNECTED notice window. */
+const NOTICE = { x: 36, y: 92, w: 184, h: 40 } as const;
 
 export class PauseMenu {
   private readonly game: GameServices;
   private readonly map: MapPage;
+  private readonly controls: ControlsPage;
   private readonly options: readonly (readonly [string, OptionResult])[];
+  private readonly exitChord: boolean;
   private isOpen = false;
   private page: Page = 'items';
   /** Opened on the map with Select: Select closes it again. */
   private mapToggle = false;
-  private mapHint = '';
+  /** The page's hint line, and the labels version it was built for (-1 = rebuild). */
+  private hintText = '';
+  private hintVersion = -1;
+  /** The gamepad in use was unplugged: the notice shows until a button or key is pressed. */
+  private disconnected = false;
   private t = 0;
   /** Index into EQUIPPABLE_ITEMS under the cursor. */
   private cell = 0;
@@ -100,11 +118,18 @@ export class PauseMenu {
   constructor(game: GameServices, opts: PauseMenuOptions = {}) {
     this.game = game;
     this.map = new MapPage(game);
+    this.controls = new ControlsPage(game.audio);
     this.options = opts.persists === false ? PLAYTEST_OPTIONS : PLAY_OPTIONS;
+    this.exitChord = opts.exitChord === true;
   }
 
   get active(): boolean {
     return this.isOpen;
+  }
+
+  /** Show the CONTROLLER DISCONNECTED notice over the open menu until the next press. */
+  showDisconnected(): void {
+    if (this.isOpen) this.disconnected = true;
   }
 
   /** Open on the item screen ('items') or directly on the map ('map'). */
@@ -115,6 +140,8 @@ export class PauseMenu {
     this.toast = 0;
     this.option = -1;
     this.soundRow = -1;
+    this.disconnected = false;
+    this.controls.reset();
     this.owned = ownedEquippables(this.game.save);
     const owned = this.owned;
     const equipped = this.game.save.equipped;
@@ -129,14 +156,32 @@ export class PauseMenu {
     if (!this.isOpen) return 'resume';
     this.t += dt;
     this.toast = Math.max(0, this.toast - dt);
+    if (this.disconnected) {
+      // Any button or key dismisses the notice (and does nothing else).
+      if (input.anyPressed()) {
+        this.disconnected = false;
+        this.game.audio.sfx('menuSelect');
+      }
+      return 'none';
+    }
+    if (this.controls.holding(input)) return 'none';
+    if (this.exitChord && input.held('start') && input.held('select')) return 'none';
     if (this.page === 'items' && this.soundRow >= 0 && input.pressed('b')) {
       this.closeSound();
       return 'none';
     }
     if (input.pressed('start') || input.pressed('b') || (this.mapToggle && input.pressed('select'))) return this.close();
-    if (input.pressed('l') || input.pressed('r') || input.pressed('select')) {
-      this.showPage(this.page === 'items' ? 'map' : 'items');
-      this.game.audio.sfx('menuMove');
+    if (input.pressed('l') || input.pressed('r')) {
+      const step = input.pressed('r') ? 1 : PAGES.length - 1;
+      this.flipTo(PAGES[(PAGES.indexOf(this.page) + step) % PAGES.length]!);
+      return 'none';
+    }
+    if (input.pressed('select')) {
+      this.flipTo(this.page === 'map' ? 'items' : 'map');
+      return 'none';
+    }
+    if (this.page === 'controls') {
+      this.controls.update(input);
       return 'none';
     }
     return this.page === 'items' ? this.updateItems(input) : this.updateMap(input);
@@ -150,12 +195,12 @@ export class PauseMenu {
     ctx.save();
     ctx.translate(0, -Math.round((1 - k) * (1 - k) * 190));
     if (this.page === 'items') this.drawItemsPage(r);
-    else {
-      this.map.draw(r, r.time);
-      hint(r, this.mapHint);
-    }
+    else if (this.page === 'map') this.map.draw(r, r.time);
+    else this.controls.draw(r, this.t);
+    hint(r, this.pageHint());
     ctx.restore();
     drawHud(r, this.game);
+    if (this.disconnected) drawDisconnected(r);
   }
 
   // ------------------------------------------------------------------ input
@@ -166,11 +211,39 @@ export class PauseMenu {
     return 'resume';
   }
 
+  private flipTo(page: Page): void {
+    this.showPage(page);
+    this.game.audio.sfx('menuMove');
+  }
+
   private showPage(page: Page): void {
     this.page = page;
-    if (page !== 'map') return;
-    this.map.refresh();
-    this.mapHint = this.map.hint(keyLabel(this.mapToggle ? 'select' : 'start'));
+    this.hintVersion = -1;
+    if (page === 'map') this.map.refresh();
+  }
+
+  /** The page's hint line, rebuilt when the page or the button labels change. */
+  private pageHint(): string {
+    if (this.hintVersion !== labelsVersion()) {
+      this.hintVersion = labelsVersion();
+      this.hintText = this.buildHint();
+    }
+    return this.hintText;
+  }
+
+  /** Names the neighbouring pages (L = previous, R = next) when that fits, else just "PAGES". */
+  private buildHint(): string {
+    const l = keyLabel('l');
+    const r = keyLabel('r');
+    const close = `${keyLabel(this.mapToggle ? 'select' : 'start')}: CLOSE`;
+    const pages = `${l}/${r}: PAGES   ${close}`;
+    switch (this.page) {
+      case 'items': return fitText(this.mapToggle
+        ? [`${l}: CONTROLS  ${r}: MAP   ${close}`, pages]
+        : [`${l}: CONTROLS  ${r}/${keyLabel('select')}: MAP   ${close}`, `${l}: CONTROLS  ${r}: MAP   ${close}`, pages]);
+      case 'map': return this.map.hint(close, l, r);
+      case 'controls': return fitText([`${l}: MAP  ${r}: ITEMS   ${close}`, pages]);
+    }
   }
 
   private updateMap(input: InputState): PauseResult {
@@ -311,7 +384,6 @@ export class PauseMenu {
     this.drawInfo(r);
     this.drawStatus(r);
     this.drawOptions(r);
-    hint(r, this.mapToggle ? ITEMS_HINT_MAP_TOGGLE : ITEMS_HINT);
   }
 
   private drawItemGrid(r: Renderer): void {
@@ -360,7 +432,7 @@ export class PauseMenu {
     const owned = this.owned;
     const item = this.option < 0 ? this.cellItem() : this.game.save.equipped ?? undefined;
     if (!item || !owned.includes(item)) {
-      outlineText(r, owned.length === 0 ? NO_ITEMS : CHOOSE_ITEM, f.x + 10, f.y + 11, UI.dim);
+      outlineText(r, owned.length === 0 ? NO_ITEMS : chooseItem(), f.x + 10, f.y + 11, UI.dim);
       return;
     }
     drawTitlePlate(r, ITEM_INFO[item].name, f.x + 8, f.y);
@@ -468,4 +540,12 @@ function drawCellCursor(r: Renderer, cx: number, cy: number, t: number): void {
 
 function hint(r: Renderer, text: string): void {
   outlineText(r, text, r.width - 10, MAP_FRAME.y + MAP_FRAME.h + 3, UI.dim, RIGHT);
+}
+
+/** The CONTROLLER DISCONNECTED notice, over everything else the menu draws. */
+function drawDisconnected(r: Renderer): void {
+  const n = NOTICE;
+  drawFrame(r, n.x, n.y, n.w, n.h, UI.fillDeep);
+  outlineText(r, 'CONTROLLER DISCONNECTED', n.x + n.w / 2, n.y + 10, UI.gold, CENTER);
+  outlineText(r, 'RECONNECT IT OR PRESS A KEY', n.x + n.w / 2, n.y + 23, UI.text, CENTER);
 }

@@ -13,7 +13,7 @@ import type { GameServices, Renderer } from '../api';
 import type { Rect, Vec } from '../../core/math';
 import { SCREEN_COLS, SCREEN_ROWS, TILE } from '../../core/constants';
 import { entityInfo, propOf } from '../../core/catalog';
-import { CENTER, SCREEN, UI, drawFrame, drawTitlePlate, keyLabel, outlineText } from './theme';
+import { CENTER, SCREEN, UI, drawFrame, drawTitlePlate, fitText, outlineText } from './theme';
 
 /** Map frame and the drawable area inside it (screen px). */
 export const MAP_FRAME = { x: 8, y: 46, w: 240, h: 166 } as const;
@@ -228,11 +228,15 @@ export class MapPage {
     return true;
   }
 
-  /** Hint line for the bottom of the page; `closeKey` is the label of the key that closes the menu. */
-  hint(closeKey: string): string {
-    const flip = `${keyLabel('l')}/${keyLabel('r')}: ITEMS`;
-    const close = `${closeKey}: CLOSE`;
-    return this.isDungeon && this.floors.length > 1 ? `UP/DOWN: FLOOR  ${flip}  ${close}` : `${flip}   ${close}`;
+  /**
+   * Hint line for the bottom of the page. `close` says how the menu closes ("ENTER: CLOSE");
+   * `l` / `r` are the labels of the page buttons (L leads back to the items, R on to the controls).
+   */
+  hint(close: string, l: string, r: string): string {
+    const floors = this.isDungeon && this.floors.length > 1 ? 'UP/DOWN: FLOOR  ' : '';
+    return fitText([
+      `${floors}${l}: ITEMS  ${r}: CONTROLS   ${close}`, `${floors}${l}/${r}: PAGES   ${close}`, `${floors}${close}`,
+    ]);
   }
 
   draw(r: Renderer, time: number): void {

@@ -1,11 +1,13 @@
 // A placed bomb: fuse ~1.6 s (blinking faster near the end), liftable and
 // throwable like a pot (it keeps ticking in the hero's hands), then explodes:
 // every entity within BLAST_RADIUS takes a 'bomb' hit (the hero too), bombable
-// tiles open for good, cuttable tiles are cut, the camera shakes. A bomb resting
-// over a pit or deep water is lost (it drops in / splashes) without a blast.
+// tiles open for good, cuttable tiles are cut, the camera shakes and the pad
+// rumbles (hard when the hero is close). A bomb resting over a pit or deep water
+// is lost (it drops in / splashes) without a blast.
 import type { Entity } from '../entity';
 import type { GameServices, Hit, Renderer } from '../api';
 import { normalize } from '../../core/math';
+import { rumble } from '../../input/devices';
 import { Carried } from './carried';
 import { circleHitsRect, strike } from './targets';
 import { bombOpenAt, cellsInCircle, cutTileAt } from './tiles';
@@ -16,6 +18,8 @@ export const BOMB_FUSE = 1.6;
 export const BLAST_RADIUS = 20;
 /** Blast damage: HP to enemies, half-hearts to the hero. */
 export const BLAST_DAMAGE = 2;
+/** A blast this close (px) to the hero rumbles the pad hard; farther away, a light tap. */
+const RUMBLE_NEAR = 48;
 /** The fuse anim runs this much faster in the last FAST_FUSE seconds. */
 const FAST_FUSE = 0.5;
 const FAST_FUSE_RATE = 3;
@@ -51,6 +55,8 @@ export class Bomb extends Carried {
     game.effect('fx.explosion', 'play', cx, cy, { above: true });
     game.audio.sfx('explode');
     game.camera.shake(0.35, 3);
+    const hero = game.player;
+    rumble(Math.hypot(hero.x - cx, hero.y - this.y) <= RUMBLE_NEAR ? 'heavy' : 'tap');
     this.blastEntities(cx, this.y);
     this.blastTiles(cx, this.y);
   }

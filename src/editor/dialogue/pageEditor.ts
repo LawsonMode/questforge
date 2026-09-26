@@ -1,12 +1,13 @@
 // Page editor of the Dialogue tab: one card per page with speaker, text (live
-// character / line / box counter), an optional 2-3 answer choice with a flag,
-// and add / duplicate / remove / reorder. Text commits on change (one undo step)
-// while typing feeds the live preview through PageEditHost.draft.
+// character / line / box counter, "Insert button" for {btn:x} codes), an
+// optional 2-3 answer choice with a flag, and add / duplicate / remove /
+// reorder, under a line explaining the text codes. Text commits on change (one
+// undo step) while typing feeds the live preview through PageEditHost.draft.
 import type { EditorContext } from '../context';
 import type { Dialogue, DialoguePage } from '../../core/types';
 import { button, el, field, setChildren, textArea, textInput } from '../ui/dom';
 import { flagInput, focusKey, keyedCheckbox, retarget, warningBox } from '../entities/widgets';
-import { CHOICE_OPTIONS, blankAnswersWarning, blankPage, choiceCountWarning, pageStats, statsText } from './dialogueModel';
+import { BUTTON_TOKENS, CHOICE_OPTIONS, blankAnswersWarning, blankPage, choiceCountWarning, pageStats, statsText } from './dialogueModel';
 
 export interface PageEditOpts {
   /** Rebuild the cards afterwards (structure changed). */
@@ -30,6 +31,15 @@ export interface PageEditHost {
 
 const { min: MIN_OPTIONS, max: MAX_OPTIONS } = CHOICE_OPTIONS;
 
+/** The text codes, explained once above the pages. */
+function codesHelp(): HTMLElement {
+  const code = (t: string): HTMLElement => el('code', { class: 'qf-dlg-codes__code' }, t);
+  return el('p', { class: 'qf-dlg-codes' },
+    'Codes: ', code('{name}'), ' the player’s name',
+    BUTTON_TOKENS.map((t) => [' · ', code(t.token), ` ${t.label}`]),
+    '. Buttons show as the key or controller button the player is using.');
+}
+
 /** All page cards plus "+ Add page" (focus then moves to the new page's text). */
 export function buildPages(h: PageEditHost): HTMLDivElement {
   const n = h.dialogue.pages.length;
@@ -38,8 +48,31 @@ export function buildPages(h: PageEditHost): HTMLDivElement {
     h.edit('Add page', (d) => { d.pages.push(blankPage()); }, { rebuild: true, select: n });
   }, { title: 'Add a page at the end' });
   return el('div', { class: 'qf-dlg-pages' },
+    codesHelp(),
     h.dialogue.pages.map((page, i) => pageCard(h, page, i, n)),
     focusKey(add, 'page:add'));
+}
+
+/** "Insert button…": puts a {btn:x} code at the text's caret and commits it (one undo step). */
+function insertButton(text: HTMLTextAreaElement, key: string, live: () => void): HTMLSelectElement {
+  const picker = focusKey(el('select', {
+    class: 'qf-select qf-dlg-insert',
+    title: 'Insert a button code at the cursor: the game shows it as the key or controller button the player uses',
+    'aria-label': 'Insert a button code',
+  },
+  el('option', { value: '' }, 'Insert button…'),
+  BUTTON_TOKENS.map((t) => el('option', { value: t.token }, `${t.token}  ${t.label}`))), key);
+  picker.addEventListener('change', () => {
+    const token = picker.value;
+    picker.value = '';
+    if (!token) return;
+    const start = text.selectionStart ?? text.value.length;
+    text.setRangeText(token, start, text.selectionEnd ?? start, 'end');
+    text.focus();
+    live();
+    text.dispatchEvent(new Event('change'));
+  });
+  return picker;
 }
 
 function movePage(h: PageEditHost, from: number, to: number): void {
@@ -62,7 +95,7 @@ function pageCard(h: PageEditHost, page: DialoguePage, i: number, n: number): HT
   const text = focusKey(textArea(page.text, (v) => h.edit('Edit text', (d) => {
     const pg = d.pages[i];
     if (pg) pg.text = v;
-  }), { rows: 4, placeholder: 'What is said… ({name} = the player’s name)' }), `page:${i}:text`);
+  }), { rows: 4, placeholder: 'What is said… ({name} = the player’s name, {btn:a} = the action button)' }), `page:${i}:text`);
   text.classList.add('qf-dlg-page__text');
   text.spellcheck = true;
 
@@ -108,7 +141,8 @@ function pageCard(h: PageEditHost, page: DialoguePage, i: number, n: number): HT
       focusKey(duplicate, `page:${i}:dup`),
       focusKey(remove, `page:${i}:del`)),
     field('Speaker', speaker),
-    field('Text', el('div', { class: 'qf-dlg-page__textwrap' }, text, stats)),
+    field('Text', el('div', { class: 'qf-dlg-page__textwrap' }, text,
+      el('div', { class: 'qf-dlg-page__textfoot' }, insertButton(text, `page:${i}:insert`, live), stats))),
     choiceEditor(h, page, i, options, live));
   card.addEventListener('focusin', () => h.selectPage(i));
   card.addEventListener('click', (e) => {

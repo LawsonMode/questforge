@@ -1,5 +1,7 @@
 // Every line of text in "The Hollow Crown": NPC talk, signs, and the quest beats.
-// Ids are referenced by npc/sign props and trigger dialogue actions.
+// Ids are referenced by npc/sign props and trigger dialogue actions. Buttons are
+// named with {btn:x} tokens ({btn:move}, {btn:a}, {btn:start}, ...), shown as the
+// keys or pad buttons of the device the player is using.
 import type { Dialogue, DialoguePage } from '../../core/types';
 
 /** Dialogue ids. */
@@ -58,7 +60,7 @@ export function sampleDialogues(): Dialogue[] {
       'Ellendor, the valley of the Sun Crystal. For a hundred years its light kept the fields green and the monsters asleep.',
       'Last night the crystal in the Hollow Keep went dark. By morning, strange things were stirring in the woods.',
       '{name}! The village Elder has been asking for you. Best not keep him waiting... he waits loudly.',
-      '(Walk with the arrow keys. X talks to people, reads signs and opens chests. Enter opens the menu.)'),
+      '(Walk with the {btn:move}. {btn:a} talks to people, reads signs and opens chests. Press {btn:start} for your items and map.)'),
     say(D.elderQuest, 'Elder: the quest',
       by(ELDER, 'Ah, {name}, there you are! You have seen it too, then. The Sun Crystal has gone dark.'),
       by(ELDER, 'Without its light the monsters grow bolder by the hour.'),
@@ -94,7 +96,7 @@ export function sampleDialogues(): Dialogue[] {
       by('Pip', 'I only fell over twice. Well... three times. The third time was on purpose.')),
     say(D.pip, 'Pip',
       by('Pip', 'I\'m not scared of monsters! ...Okay, maybe the big ones. And the slimy ones.'),
-      by('Pip', 'Are you going to the Keep? Hold your sword button down and let go. You spin like a top! I saw a knight do it once.')),
+      by('Pip', 'Are you going to the Keep? Hold your sword button ({btn:b}) down and let go. You spin like a top! I saw a knight do it once.')),
     say(D.ilsa, 'Ilsa',
       by('Ilsa', 'Rowan has stood by the statue since dawn, glaring at the sky. Forty years married, and he still thinks that helps.'),
       by('Ilsa', 'Take a heart from the pot if you need one, dear. And wipe your boots.')),
@@ -104,7 +106,7 @@ export function sampleDialogues(): Dialogue[] {
       by('Old Tom', 'Of course, he also swore a goose stole his hat. But a bomb or two might settle it.')),
     say(D.merchant, 'Merchant',
       by('Merchant Juno', 'Welcome, welcome! Bombs crack walls, arrows fly far, and hearts... well, hearts keep you breathing.'),
-      by('Merchant Juno', 'Step up to what you like and press X to buy. All prices are honest. Mostly.')),
+      by('Merchant Juno', 'Step up to what you like and press {btn:a} to buy. All prices are honest. Mostly.')),
     say(D.sage, 'Sage',
       by('Sage Orla', 'The lake remembers the crystal\'s light. I come here to listen to it.'),
       by('Sage Orla', 'In the Keep, a great chest guards a bow.'),
@@ -126,7 +128,7 @@ export function sampleDialogues(): Dialogue[] {
     say(D.signCave, 'Sign: cave', 'Here rests the treasure of Stonecrag. Finders keepers.'),
     say(D.keepWelcome, 'Keep: welcome',
       'The Hollow Keep. Many have entered in search of its treasure. Fewer have read this sign.',
-      'Press Shift to look at the map once you find it. Chests do not open themselves.'),
+      'Press {btn:select} to look at the map once you find it. Chests do not open themselves.'),
     say(D.keepBlocks, 'Keep: blocks', 'A heavy step opens the way north. Blocks do not mind being pushed around.'),
     say(D.keepDark, 'Keep: dark', 'Beyond lies darkness. A lantern is wiser than courage.'),
     say(D.keepTorches, 'Keep: torches', 'Two flames to wake the key.'),

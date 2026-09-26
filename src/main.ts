@@ -4,6 +4,9 @@
 // load with their first route. Every view returns an unmount function that
 // releases everything it holds; leaving an editor whose latest save failed asks
 // first. A file dropped outside the menu is never opened in place of the app.
+// Controllers: plugging one in or out shows a toast anywhere in the app; the
+// menu, the message pages and the gallery can be driven with one (padNav.ts;
+// 'b' on a message page or the gallery goes back to the menu).
 // Exposes window.__qf for e2e tests and debugging.
 import './editor/ui/ui.css';
 import './app/app.css';
@@ -22,6 +25,8 @@ import { uniqueName } from './app/format';
 import { usabilityError } from './core/validate';
 import { confirmAction } from './editor/shell/dialogs';
 import { el, toast } from './editor/ui/dom';
+import { onPadConnection, trackDevices } from './input/devices';
+import { startPadNav } from './app/padNav';
 
 declare global {
   interface Window {
@@ -37,6 +42,16 @@ declare global {
 }
 
 window.__qf = { route: null, game: null, editor: null, ready: false, error: null };
+trackDevices();
+
+/** Last connection state per pad slot: one toast per real change (a repeated event says nothing new). */
+const padSlots = new Map<number, string>();
+onPadConnection((e) => {
+  const state = `${e.connected ? '+' : '-'}${e.name}`;
+  if (padSlots.get(e.index) === state) return;
+  padSlots.set(e.index, state);
+  toast(e.connected ? `Controller connected: ${e.name}` : `Controller disconnected: ${e.name}`, 'info', 3200);
+});
 
 const root = document.getElementById('app')!;
 let unmount: (() => void) | null = null;
@@ -83,15 +98,24 @@ function showError(msg: string): void {
     el('a', { href: '#/' }, 'Back to menu')));
 }
 
+/** A view driven by the pad too, where 'b' goes back to the menu; returns the combined unmount. */
+function withPadNav(unmountView: () => void): () => void {
+  const pad = startPadNav(root, { onBack: () => nav.go('#/') });
+  return () => {
+    pad.stop();
+    unmountView();
+  };
+}
+
 function notFound(title: string, text: string): () => void {
   document.title = 'Not found — Questforge';
-  return showAppMessage(root, {
+  return withPadNav(showAppMessage(root, {
     title, text,
     actions: [
       { label: 'Back to the menu', primary: true, onClick: () => nav.go('#/') },
       { label: 'Play the sample adventure', onClick: () => nav.go('#/play/sample') },
     ],
-  });
+  }));
 }
 
 /** A stored project that is broken beyond use (e.g. no worlds): say so, and offer to back it up or remove it. */
@@ -107,7 +131,7 @@ function cannotOpen(project: Project, reason: string): () => void {
       toast(`Couldn't delete: ${err instanceof Error ? err.message : String(err)}`, 'error', 5000);
     }
   };
-  return showAppMessage(root, {
+  return withPadNav(showAppMessage(root, {
     title: 'This project can’t be opened',
     text: `${reason} Export it to keep a backup, or delete it.`,
     actions: [
@@ -115,7 +139,7 @@ function cannotOpen(project: Project, reason: string): () => void {
       { label: 'Export a backup', onClick: () => downloadProject(project) },
       { label: 'Delete it', onClick: () => void remove() },
     ],
-  });
+  }));
 }
 
 /** The engine and every entity behaviour (registered on import). */
@@ -205,7 +229,7 @@ async function mountRoute(route: Route, seq: number): Promise<(() => void) | nul
       const { mountGallery } = await import('./gfx/gallery');
       if (seq !== renderSeq) return null;
       document.title = 'Asset gallery — Questforge';
-      return mountGallery(root, createSampleProject());
+      return withPadNav(mountGallery(root, createSampleProject()));
     }
     case 'notFound':
       return notFound('Page not found', `There is nothing at “${route.path ?? location.hash}”. The link may be mistyped or out of date.`);

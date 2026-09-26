@@ -19,6 +19,8 @@ import {
 
 /** Undo label of the inspector's Delete. */
 const DELETE_LABEL = 'Delete entity';
+/** Help under free-text props (a sign's text): the game shows them in the dialogue box, codes and all. */
+const TEXT_HELP = '{name} = the hero’s name; {btn:a}, {btn:b}, {btn:y}, {btn:start}, {btn:move}… show as the player’s keys or controller buttons.';
 
 /** What the form was built for (the selection may change before a blur commits; edits re-find it by id). */
 interface Ref {
@@ -172,7 +174,7 @@ export class EntityInspector {
   }
 
   private propField(ref: Ref, s: PropSchema): HTMLElement {
-    return field(s.label, this.control(ref, s), s.help);
+    return field(s.label, this.control(ref, s), s.help ?? (s.kind === 'text' ? TEXT_HELP : undefined));
   }
 
   private control(ref: Ref, s: PropSchema): Child {

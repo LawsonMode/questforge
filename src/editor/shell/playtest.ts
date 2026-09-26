@@ -1,7 +1,8 @@
 // Playtest overlay: a full-window layer above the editor running a Game in
 // 'playtest' mode on a private copy of the project; its bar names the room the
-// hero is in and has a sound on/off toggle (shared with the menu hub and the
-// in-game SOUND panel).
+// hero is in, how to return (Escape, or holding Start + Select on a controller,
+// named in that controller's own labels once one is connected or used) and has
+// a sound on/off toggle (shared with the menu hub and the in-game SOUND panel).
 import '../../game/entities/index';
 import type { Project, WarpTarget } from '../../core/types';
 import { Game } from '../../game/game';
@@ -9,6 +10,8 @@ import { findRoom, findWorld } from '../../core/project';
 import { el } from '../ui/dom';
 import { icon } from './icons';
 import { createSoundToggle } from '../../app/soundToggle';
+import { knownPad, padGlyph, padWord } from '../../app/controls';
+import { onControlsChange, onPadConnection } from '../../input/devices';
 
 /** Callbacks of the playtest overlay. */
 export interface PlaytestOptions {
@@ -48,6 +51,24 @@ function followRoom(game: Game, label: HTMLElement): () => void {
   return () => clearInterval(timer);
 }
 
+/**
+ * Keep `hint` naming the controller's way back ("or hold Menu + View") while a
+ * controller is connected or in use (hidden otherwise); returns the stopper.
+ */
+function followPad(hint: HTMLElement, close: HTMLElement): () => void {
+  const draw = (): void => {
+    const pad = knownPad();
+    hint.hidden = !pad;
+    close.title = pad ? `Return to the editor (Esc, or hold ${padWord('start', pad)} + ${padWord('select', pad)})` : 'Return to the editor (Esc)';
+    if (pad) hint.replaceChildren(' or hold ', padGlyph(padWord('start', pad)), ' + ', padGlyph(padWord('select', pad)));
+  };
+  const offs = [onControlsChange(draw), onPadConnection(draw)];
+  draw();
+  return () => {
+    for (const off of offs) off();
+  };
+}
+
 /** Open the overlay; `project` is cloned so the game never touches editor data. */
 export function openPlaytest(project: Project, start: WarpTarget, opts: PlaytestOptions): PlaytestHandle {
   const copy = structuredClone(project);
@@ -56,17 +77,19 @@ export function openPlaytest(project: Project, start: WarpTarget, opts: Playtest
   const sound = createSoundToggle('qf-btn--ghost qf-playtest__sound');
   // Back to the game: keys must keep reaching it, not the button.
   sound.element.addEventListener('click', () => canvas.focus());
+  const padHint = el('span', { class: 'qf-playtest__padhint', hidden: true });
+  const close = el('button', { class: 'qf-btn qf-btn--small qf-playtest__close', type: 'button', title: 'Return to the editor (Esc)', on: { click: () => opts.onClose() } },
+    icon('close', 12), 'Return to editor');
   const bar = el('div', { class: 'qf-playtest__bar' },
     el('span', { class: 'qf-playtest__badge' }, icon('play', 12), 'Playtest'),
     place,
     el('span', { class: 'qf-playtest__hints' },
-      el('span', null, el('kbd', { class: 'qf-kbd' }, 'Esc'), ' to return'),
+      el('span', { class: 'qf-playtest__return' }, el('kbd', { class: 'qf-kbd' }, 'Esc'), padHint, ' to return'),
       el('span', null, el('kbd', { class: 'qf-kbd' }, 'F1'), ' hitboxes'),
       el('span', null, el('kbd', { class: 'qf-kbd' }, 'F2'), ' invincible'),
       el('span', null, el('kbd', { class: 'qf-kbd' }, 'F3'), ' noclip')),
     sound.element,
-    el('button', { class: 'qf-btn qf-btn--small qf-playtest__close', type: 'button', title: 'Return to the editor (Esc)', on: { click: () => opts.onClose() } },
-      icon('close', 12), 'Return to editor'));
+    close);
   const layer = el('div', { class: 'qf-playtest', role: 'dialog', 'aria-label': 'Playtest' },
     bar, el('div', { class: 'qf-playtest__stage' }, canvas));
   document.body.appendChild(layer);
@@ -82,7 +105,9 @@ export function openPlaytest(project: Project, start: WarpTarget, opts: Playtest
 
   let game: Game | null = null;
   try {
-    game = new Game(canvas, copy, { mode: 'playtest', start, onExit: () => opts.onClose(), onError: opts.onError });
+    // The game may ask to leave from inside its own frame (the pad's Start + Select hold):
+    // close once that frame is over, never while it still draws.
+    game = new Game(canvas, copy, { mode: 'playtest', start, onExit: () => queueMicrotask(() => opts.onClose()), onError: opts.onError });
     game.start();
   } catch (err) {
     // Nothing may stay behind to cover the editor: the half-started game, the key listener, the layer.
@@ -97,6 +122,7 @@ export function openPlaytest(project: Project, start: WarpTarget, opts: Playtest
   }
   canvas.focus();
   const stopFollowing = followRoom(game, place);
+  const stopPadHint = followPad(padHint, close);
 
   let destroyed = false;
   return {
@@ -105,6 +131,7 @@ export function openPlaytest(project: Project, start: WarpTarget, opts: Playtest
       if (destroyed) return;
       destroyed = true;
       stopFollowing();
+      stopPadHint();
       document.removeEventListener('keydown', onKey);
       game.destroy();
       layer.remove();

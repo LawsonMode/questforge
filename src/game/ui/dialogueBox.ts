@@ -7,11 +7,14 @@
 // calls made while a dialogue is showing queue behind it. The window is opaque.
 // A box stays invisible until its first update (a dialogue opened during a room
 // scroll or fade appears once the new room is on screen, instead of as a
-// collapsed bar over the transition).
+// collapsed bar over the transition). {btn:x} tokens name the buttons of the
+// device in use; if the player switches device while such a dialogue shows, it
+// is laid out again with the new names (keeping the box and how much is shown).
 // OWNER: triggers+UI agent.
 import type { DialoguePage, Project } from '../../core/types';
 import type { AudioApi, InputState, Renderer } from '../api';
-import { BOX_LINES, boxLength, layoutDialogue, type DialogueBoxPage } from './dialogueLayout';
+import { labelsVersion } from '../keys';
+import { BOX_LINES, boxLength, hasButtonTokens, layoutDialogue, type DialogueBoxPage } from './dialogueLayout';
 import { UI, drawFrame, drawPointer, outlineText, flatText } from './theme';
 
 export type DialoguePosition = 'top' | 'bottom';
@@ -57,6 +60,10 @@ const OPTION_INDENT = 14;
 
 interface Request {
   boxes: DialogueBoxPage[];
+  /** The source pages when they hold button tokens (re-laid out when the labels change), else null. */
+  pages: readonly DialoguePage[] | null;
+  /** labelsVersion() the boxes were laid out with. */
+  labels: number;
   name: string;
   position: DialoguePosition;
   onChoice?: (page: DialoguePage, index: number) => void;
@@ -96,7 +103,8 @@ export class DialogueBox {
     if (boxes.length === 0) return Promise.resolve(-1);
     return new Promise<number>((resolve) => {
       this.queue.push({
-        boxes, name, position: opts?.position ?? 'bottom', onChoice: opts?.onChoice, resolve, choice: -1,
+        boxes, pages: hasButtonTokens(pages) ? pages : null, labels: labelsVersion(), name,
+        position: opts?.position ?? 'bottom', onChoice: opts?.onChoice, resolve, choice: -1,
       });
       if (!this.current) this.startNext();
     });
@@ -105,6 +113,7 @@ export class DialogueBox {
   update(dt: number, input: InputState): void {
     const req = this.current;
     if (!req) return;
+    if (req.labels !== labelsVersion()) this.relayout(req);
     this.time += dt;
     this.blipT = Math.max(0, this.blipT - dt);
     if (this.openT < OPEN_TIME) {
@@ -149,6 +158,23 @@ export class DialogueBox {
     this.boxIndex = 0;
     this.openT = 0;
     this.resetBox();
+  }
+
+  /**
+   * The button labels changed (another device): lay the pages out again, staying
+   * on the same box (or the last, if there are fewer now) with as much shown.
+   */
+  private relayout(req: Request): void {
+    req.labels = labelsVersion();
+    if (!req.pages) return;
+    const boxes = layoutDialogue(req.pages, req.name);
+    if (boxes.length === 0) return;
+    const shown = this.reveal >= boxLength(req.boxes[this.boxIndex]!);
+    req.boxes = boxes;
+    this.boxIndex = Math.min(this.boxIndex, boxes.length - 1);
+    const box = boxes[this.boxIndex]!;
+    this.reveal = shown ? boxLength(box) : Math.min(this.reveal, boxLength(box));
+    this.cursor = Math.min(this.cursor, Math.max(0, (box.options?.length ?? 1) - 1));
   }
 
   private resetBox(): void {

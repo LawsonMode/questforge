@@ -1,5 +1,6 @@
 // Dialogue tab model (pure: no DOM): page statistics measured with the game's
-// own box layout, naming, duplication, search and flag-name validation.
+// own box layout, {btn:x} button codes, naming, duplication, search and
+// flag-name validation.
 import type { Dialogue, DialoguePage, Project } from '../../core/types';
 import { newId } from '../../core/project';
 import { BOX_LINES, layoutDialogue } from '../../game/ui/dialogueLayout';
@@ -7,6 +8,7 @@ import { ENGINE_FLAG_PREFIXES } from '../entities/refs';
 import { compareNames } from '../entities/labels';
 import { copyName, uniqueName } from '../entities/names';
 import { DEFAULT_HERO_NAME } from '../../game/state';
+import { substituteButtons, type LabelOpts } from '../../input/devices';
 
 /** Name substituted for {name} in previews: the same one playtests use. */
 export const PREVIEW_NAME = DEFAULT_HERO_NAME;
@@ -14,15 +16,49 @@ export const PREVIEW_NAME = DEFAULT_HERO_NAME;
 export interface PageStats {
   /** Characters of text as typed. */
   chars: number;
-  /** Wrapped text lines (after {name} substitution). */
+  /** Wrapped text lines (after {name} and {btn:x} substitution). */
   lines: number;
   /** Dialogue boxes the page needs in game. */
   boxes: number;
 }
 
-/** How a page lays out in the in-game box. */
+/** A button code a dialogue may use: the game shows it as the key or pad button the player uses. */
+export interface ButtonToken {
+  token: string;
+  /** What the button does (menus, help). */
+  label: string;
+}
+
+/**
+ * The {btn:x} codes, in the order the editor offers them: the buttons the game uses.
+ * (substituteButtons also knows {btn:x}, the pad's top face button, but the game
+ * gives it no job and the keyboard no key, so the editor doesn't offer it.)
+ */
+export const BUTTON_TOKENS: readonly ButtonToken[] = [
+  { token: '{btn:a}', label: 'action' },
+  { token: '{btn:b}', label: 'sword' },
+  { token: '{btn:y}', label: 'item' },
+  { token: '{btn:start}', label: 'pause menu' },
+  { token: '{btn:select}', label: 'map' },
+  { token: '{btn:l}', label: 'page left' },
+  { token: '{btn:r}', label: 'page right' },
+  { token: '{btn:move}', label: 'movement' },
+];
+
+/**
+ * The page as the game shows it: {btn:x} codes in its text, speaker and
+ * answers replaced by button names for `opts` (default: the device in use).
+ */
+export function withButtons(page: DialoguePage, opts?: LabelOpts): DialoguePage {
+  const out: DialoguePage = { ...page, text: substituteButtons(page.text, opts) };
+  if (page.speaker !== undefined) out.speaker = substituteButtons(page.speaker, opts);
+  if (page.choice) out.choice = { ...page.choice, options: page.choice.options.map((o) => substituteButtons(o, opts)) };
+  return out;
+}
+
+/** How a page lays out in the in-game box (button codes shown for the device in use). */
 export function pageStats(page: DialoguePage): PageStats {
-  const boxes = layoutDialogue([page], PREVIEW_NAME);
+  const boxes = layoutDialogue([withButtons(page)], PREVIEW_NAME);
   return {
     chars: page.text.length,
     lines: boxes.reduce((n, b) => n + b.lines.length, 0),

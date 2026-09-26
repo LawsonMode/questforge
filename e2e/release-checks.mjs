@@ -4,6 +4,11 @@
 // a game that fails to start leaves the error screen visible (no game host
 // covering it).
 
+import { readFileSync } from 'node:fs';
+
+/** The version the footer must show: package.json's (the single canonical spot). */
+const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+
 const readToggle = (sel) => {
   const b = document.querySelector(sel);
   return b ? { text: b.textContent.trim(), muted: b.classList.contains('is-muted') } : null;
@@ -17,7 +22,7 @@ export default async function (t) {
   // ---- menu hub (each scenario runs in a fresh browser context: nothing stored yet): version footer + sound toggle
   await t.goto('#/');
   const version = await t.eval(() => document.querySelector('.qf-menu-footer')?.textContent ?? '');
-  t.assert(/Questforge v1\.0\.0/.test(version), `the footer shows v1.0.0 (${version})`);
+  t.assert(version.includes(`Questforge v${VERSION}`), `the footer shows v${VERSION} (${version})`);
   let menuToggle = await t.eval(readToggle, '.qf-menu-sound');
   t.assert(menuToggle && menuToggle.text === 'Sound on' && !menuToggle.muted, `menu toggle starts on (${JSON.stringify(menuToggle)})`);
   await page.click('.qf-menu-sound');

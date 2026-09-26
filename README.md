@@ -42,13 +42,16 @@ TypeScript + Vite, Canvas 2D and WebAudio, **no runtime dependencies**. Projects
   torches, liftable pots, rocks and bushes, shops, warps and stairs.
 - **Game UI**: title screen, three save slots with a file-select screen, HUD (magic, equipped item,
   gems / bombs / arrows / keys, hearts), dialogue boxes with choices, pause and inventory, a world and
-  dungeon map, game over / continue, and a SOUND panel for music and effect volume.
+  dungeon map, game over / continue, a SOUND panel for music and effect volume, and a CONTROLS page.
+- **Controller support**: play the whole game, from the title screen on, with a gamepad. Button
+  names and glyphs follow the pad in use (Xbox, PlayStation, Nintendo), with rumble and a Swap A/B
+  option. See [Controllers](#controllers).
 - **Original chiptune audio**: a synthesizer with an original track for every area (title, overworld,
   village, forest, dungeon, cave, house, boss, victory, game over, file select) and sound effects.
 
 ### The builder
 - **Menu hub**: play the sample, start a new project (blank or from a copy of the sample), open,
-  duplicate, export, import and delete projects.
+  duplicate, export, import and delete projects. The hub can be driven with a controller too.
 - **Map editor**: worlds (overworld, dungeon, interior) made of rooms of 1–4 × 1–4 screens on a grid
   with floors, three tile layers (ground, objects, overhead), pencil / rectangle / fill / eraser /
   eyedropper / select tools, **terrain brushes** whose borders fit themselves, copy & paste, a world
@@ -60,15 +63,16 @@ TypeScript + Vite, Canvas 2D and WebAudio, **no runtime dependencies**. Projects
   (enemies cleared, switches, torches lit, flags, items, regions, bosses defeated, blocks pushed),
   *then* (open / close doors, show / hide entities, set flags, dialogue, give / take items, change
   tiles, sound, music, the secret jingle, warp, heal, screen shake, wait).
-- **Dialogue editor**: pages, speakers, `{name}` for the hero's name, choices that set flags, and a live
-  preview laid out exactly like the game's dialogue box.
+- **Dialogue editor**: pages, speakers, `{name}` for the hero's name, `{btn:a}`-style button codes that
+  show the player's own keys or controller buttons, choices that set flags, and a live preview laid out
+  exactly like the game's dialogue box.
 - **Pixel-art editor**: 16-colour palettes (snapped to the SNES 5-bit colour gamut), tiles with
   collision and behaviour settings (cuttable, liftable, bombable, animated), sprites with frames,
   animations and an origin, drawing tools, and usage tracking.
 - **Project tab**: title, subtitle, author, start hearts and items, intro dialogue, title music, the
   start location, a live **validation report** with jump-to buttons, and project statistics.
 - **Playtest** any time with **F5** (Shift+F5 from the selected room) with debug toggles for hitboxes,
-  invincibility and noclip; **Esc** returns to the editor.
+  invincibility and noclip; **Esc** returns to the editor (on a controller, hold **Start + Select**).
 
 | | |
 |---|---|
@@ -77,20 +81,69 @@ TypeScript + Vite, Canvas 2D and WebAudio, **no runtime dependencies**. Projects
 
 ## Controls
 
-| Keyboard | Gamepad (standard) | Action |
+| Keyboard | Controller | Action |
 |---|---|---|
 | Arrows / WASD | D-pad / left stick | Move |
-| **Z** (or J) | A | Sword — hold, then release, for a spin attack |
-| **X** (or K, Space) | B | Action — talk, read, open, lift, throw, dash (with the Dash Boots) |
-| **C** (or L) | X | Use the selected item |
+| **Z** (or J) | Bottom face button | Sword — hold, then release, for a spin attack |
+| **X** (or K, Space) | Right face button | Action — talk, read, open, lift, throw, dash (with the Dash Boots) |
+| **C** (or L) | Left face button | Use the selected item |
 | **Enter** | Start | Pause & inventory (pick an item, save, sound settings) |
 | **Shift** (or M) | Select | Map |
-| Q / E | L / R | Switch between the inventory and the map in the pause menu |
-| Esc | | Leave a playtest |
+| Q / E | L / R (shoulder buttons) | Flip the pause menu's pages: items, map, controls |
+| Esc | Hold Start + Select (1 s) | Leave a playtest |
+
+The controller buttons, by name for each kind of pad, are listed under [Controllers](#controllers).
 
 In the editor: **F5** playtest, **Shift+F5** playtest from the selected room, **Ctrl+S** save,
 **Ctrl+Z / Ctrl+Y** undo / redo, **1–4** switch tabs, **?** help. The menu hub and the playtest bar
 have a sound on / off toggle.
+
+## Controllers
+
+Questforge works with any gamepad the browser reports with the **standard mapping** (Xbox,
+PlayStation and Nintendo pads and most other USB or Bluetooth pads) in Chrome, Edge and Firefox.
+Plug the pad in and **press any button**: browsers only show a pad to a page after one of its buttons
+is pressed. A notice appears when a controller connects or disconnects.
+
+**Buttons follow the SNES layout by position**, so the sword is always the bottom face button and
+action the right one, whatever is printed on them. Every on-screen hint, the title screen, the pause
+menu and dialogue text name the buttons of the pad in use in its own glyphs (Xbox, PlayStation and
+Nintendo pads are recognised automatically; other pads show A / B / X / Y and Start / Select). Press
+a key and the hints switch back to the keyboard.
+
+| Game button | Position | Xbox | PlayStation | Nintendo | Keyboard |
+|---|---|---|---|---|---|
+| Sword | bottom | A | ✕ | B | Z |
+| Action (and confirm in menus) | right | B | ○ | A | X |
+| Item | left | X | □ | Y | C |
+| *(unused)* | top | Y | △ | X | — |
+| Pause & inventory | Start | Menu | Options | + | Enter |
+| Map | Select | View | Create | − | Shift |
+| Pause pages | L / R | LB / RB | L1 / R1 | L / R | Q / E |
+| Move | D-pad or left stick | | | | Arrows / WASD |
+
+- **Swap A/B**: prefer the bottom button for action and confirm (the modern layout)? Turn on
+  **Swap** on the pause menu's CONTROLS page (press Start, then L), or pick **Swapped** under
+  *Button layout* in the menu hub's controller banner. It swaps the bottom and right face buttons
+  everywhere, in the game and the menus, and the hints follow.
+- **Vibration**: the pad rumbles when you are hurt, when a bomb goes off and at big moments (pads that
+  support it). Turn it off on the CONTROLS page or in the hub's controller banner. Both settings are
+  kept per browser.
+- **Menus**: the d-pad or stick moves (holding repeats), the action button or Start selects, the sword
+  button goes back. In the menu hub, message pages and the gallery the d-pad or left stick moves the
+  focus (a gold ring shows it), the action button or Start presses the button, the sword button
+  closes a dialog or goes back, and the right stick scrolls.
+- **Name entry**: pick letters with the d-pad and the action button, delete with the sword button,
+  finish with Start.
+- **Unplugged mid-game?** The game pauses with a CONTROLLER DISCONNECTED notice; plug it back in (or
+  carry on with the keyboard) and press any button.
+- **Leaving a playtest**: hold **Start + Select** together for a second (a LEAVING PLAYTEST bar fills
+  up), or press Esc on the keyboard.
+- **Sound**: browsers only start audio after a click or a key press, and a controller button does not
+  count. If the title screen says *CLICK OR PRESS A KEY FOR SOUND*, click the page or press a key once.
+
+The menu hub's Controls card and the editor's help list every control with a Keyboard and a
+Controller column, drawn for the pad in use. The editor itself is built for the mouse and keyboard.
 
 ## Quick start
 
@@ -129,6 +182,13 @@ project is saved in the browser automatically as you edit.
    secret jingle".
 5. **Dialogue** (Dialogue tab). Write conversations page by page, name the speaker, use `{name}` for the
    hero's name and add choices that set flags. Hook a dialogue to an NPC, a sign or a trigger action.
+   To name a button, write a **button code** instead of a key: `{btn:a}` (action), `{btn:b}` (sword),
+   `{btn:y}` (item), `{btn:start}` (pause menu), `{btn:select}` (map), `{btn:l}` / `{btn:r}` (pause
+   pages) or `{btn:move}` (movement). The game shows each one as the player's own key or controller
+   button: "Press `{btn:a}` to read" reads *Press X to read* on a keyboard, *Press B to read* on an Xbox
+   pad and *Press ○ to read* on a PlayStation pad. **Insert button…** puts a code at the cursor, and the
+   preview's **Buttons as** picker shows the page for the keyboard or any kind of pad. Codes work in
+   speaker names, answers and a sign's own text too.
 6. **Pixel art** (Art tab). Edit the palettes, draw your own tiles (and set their collision and behaviour)
    and sprites with animation frames. Your own tiles start at id 1000 and appear in the map palette.
 7. **Playtest**. Press **F5** at any time; debug keys F1 hitboxes, F2 invincible, F3 noclip.

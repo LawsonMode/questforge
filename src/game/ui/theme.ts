@@ -1,5 +1,7 @@
 // Shared look of the in-game UI: SNES-style palette, framed windows, outlined
-// bitmap text, pointers, heart rows, item icons and the 4-piece heart icon.
+// bitmap text, pointers, heart rows, item icons and the 4-piece heart icon, key
+// caps for button names, hint lines that fit whatever the device calls its
+// buttons, and the gamepad "press a key for sound" hint.
 // Everything draws through the Renderer in screen space. OWNER: triggers+UI agent.
 //
 // Menus redraw every frame, so the costly pieces are pre-rendered once into
@@ -8,11 +10,12 @@
 // strings (9 text passes each), big title text (up to 20 scaled passes) and the
 // pixel-by-pixel heart-piece icon.
 import type { ItemId, SaveData } from '../../core/types';
-import type { Renderer } from '../api';
+import type { AudioApi, Renderer } from '../api';
 import { ITEM_INFO } from '../../content/ids';
 import { GLYPH_H, drawTextAligned, measureText } from '../../gfx/font';
+import { currentControls } from '../../input/devices';
 
-export { keyLabel } from '../keys';
+export { keyLabel, liveText } from '../keys';
 
 /** UI colours (5-bit SNES gamut: channels are multiples of 8). */
 export const UI = {
@@ -229,6 +232,27 @@ export const GOLD_BANDS: readonly TextBand[] = [
   { from: 6, to: 8, color: '#b85810' },
 ];
 
+/** Widest a hint line along the bottom of a menu may be (px). */
+export const HINT_MAX_W = 236;
+
+/**
+ * The first of `candidates` (fullest wording first) that fits in `maxWidth` px,
+ * else the last: button names differ in width between devices (ENTER, OPTIONS, +).
+ */
+export function fitText(candidates: readonly string[], maxWidth: number = HINT_MAX_W): string {
+  for (const c of candidates) if (measureText(c) <= maxWidth) return c;
+  return candidates[candidates.length - 1] ?? '';
+}
+
+/** Told to gamepad players while browser audio waits for a gesture (a pad press is not one). */
+export const SOUND_HINT = 'CLICK OR PRESS A KEY FOR SOUND';
+
+/** Whether SOUND_HINT applies: the audio is still locked (or suspended) and the player is on a gamepad. */
+export function needsSoundHint(audio: AudioApi): boolean {
+  const s = audio.status;
+  return (s === 'locked' || s === 'suspended') && currentControls().device === 'gamepad';
+}
+
 /** Play time as H:MM:SS (or M:SS under an hour). */
 export function formatTime(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
@@ -278,6 +302,28 @@ export function drawFrame(r: Renderer, x: number, y: number, w: number, h: numbe
   r.fillRect(x + w - 3, y + 3, 1, h - 6, UI.shade, o);
   if (alpha >= 1) r.fillRect(x + 3, y + 3, w - 6, h - 6, fill, o);
   else r.fillRect(x + 3, y + 3, w - 6, h - 6, fill, { screen: true, alpha });
+}
+
+/** Width (px) of the key cap drawKeyCap draws for `label`. */
+export function keyCapWidth(label: string): number {
+  return Math.max(11, measureText(label) + 6);
+}
+
+/**
+ * A button name on a small key cap (dark outline with clipped corners, lit top
+ * edge), its left edge at x and the label's text row at y (the cap spans y-2 to
+ * y+8). Returns the cap's width.
+ */
+export function drawKeyCap(r: Renderer, label: string, x: number, y: number, color: string = UI.text): number {
+  const w = keyCapWidth(label);
+  const o = SCREEN;
+  r.fillRect(x + 1, y - 2, w - 2, 11, UI.outline, o);
+  r.fillRect(x, y - 1, w, 9, UI.outline, o);
+  r.fillRect(x + 1, y - 1, w - 2, 9, UI.fillLight, o);
+  r.fillRect(x + 2, y - 1, w - 4, 1, UI.mid, o);
+  r.fillRect(x + 2, y + 7, w - 4, 1, UI.shade, o);
+  flatText(r, label, x + Math.floor((w - measureText(label)) / 2), y, color);
+  return w;
 }
 
 /** A small title plate straddling the top edge of a frame. */
