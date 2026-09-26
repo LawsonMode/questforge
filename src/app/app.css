@@ -1,0 +1,52 @@
+/* App-level layout: game host, error screen and message card. The menu/editor add their own styles. */
+.qf-game-host {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qf-game-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  outline: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.qf-app-error {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 20px;
+  background: var(--qf-panel, #211d2e);
+  border: 1px solid var(--qf-danger, #e05050);
+  border-radius: 6px;
+}
+
+.qf-app-error pre {
+  white-space: pre-wrap;
+  font-size: 12px;
+  color: #ffb0b0;
+}
+
+/* Message card (not-found pages). */
+.qf-app-message { width: calc(100% - 32px); max-width: 560px; margin: 12vh auto 0; padding: 28px 28px 24px; text-align: center; background: var(--qf-panel); border: 1px solid var(--qf-border-2); border-radius: 10px; box-shadow: 0 12px 40px #0008; }
+.qf-app-message canvas { margin: 0 auto 14px; }
+.qf-app-message h1 { margin: 0 0 8px; font-size: 20px; }
+.qf-app-message p { margin: 0 0 18px; color: var(--qf-text-dim); line-height: 1.5; }
+.qf-app-message__actions { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+
+/* Long unbroken names (a project called "AAAA…") wrap instead of running off the screen. */
+.qf-toast,
+.qf-modal__body {
+  overflow-wrap: anywhere;
+}
+
+/* Sound on/off toggle (menu hub footer, editor playtest bar). */
+.qf-sound-toggle { display: inline-flex; align-items: center; gap: 6px; color: inherit; }
+.qf-sound-toggle.is-muted { color: var(--qf-text-dim); }
+.qf-sound-toggle.is-muted .qf-icon { color: var(--qf-danger); }
+.qf-playtest__sound { flex: none; }

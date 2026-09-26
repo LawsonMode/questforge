@@ -1,0 +1,88 @@
+/* Dialogue tab (qf-dlg-*). Built on ui.css tokens. */
+
+.qf-dlg {
+  flex: 1; min-height: 0; display: grid; gap: 8px; padding: 8px;
+  grid-template-columns: minmax(240px, 300px) minmax(360px, 1fr) minmax(300px, 544px);
+}
+.qf-dlg-side, .qf-dlg-right { display: flex; flex-direction: column; gap: 8px; min-height: 0; min-width: 0; }
+.qf-dlg-listpanel { flex: 3 1 0; }
+.qf-dlg-flagspanel { flex: 2 1 0; }
+.qf-dlg-right > .qf-panel:last-child { flex: 1 1 0; }
+.qf-dlg-main { min-height: 0; min-width: 0; overflow: auto; background: var(--qf-panel); border: 1px solid var(--qf-border); border-radius: var(--qf-radius); }
+.qf-dlg-main__body { padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
+
+/* ---------------------------------------------------------------- list */
+/* Only the list scrolls: search + toolbar stay in view. */
+.qf-dlg-listpanel > .qf-panel__body { display: flex; flex-direction: column; overflow: hidden; }
+.qf-dlg-list { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.qf-dlg-listbar { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; flex: none; }
+.qf-dlg-item { flex-direction: column; align-items: stretch; gap: 1px; }
+.qf-dlg-item:focus-visible { outline: 2px solid var(--qf-focus); }
+.qf-dlg-item__top { display: flex; align-items: center; gap: 6px; }
+.qf-dlg-item__name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qf-dlg-item__meta { color: var(--qf-text-dim); font-size: 11px; }
+.qf-dlg-item__unused { opacity: 0.55; }
+.qf-dlg-item__snippet { color: var(--qf-text-dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------------------------------------------------------------- editor */
+.qf-dlg-head { display: flex; align-items: center; gap: 8px; }
+.qf-dlg-name { font-size: 15px; font-weight: 600; flex: 1; }
+.qf-dlg-pages { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.qf-dlg-pages > .qf-btn { align-self: flex-start; }
+.qf-dlg-page { background: var(--qf-bg-2); border: 1px solid var(--qf-border); border-radius: var(--qf-radius); padding: 6px 10px 8px; }
+.qf-dlg-page--active { border-color: var(--qf-accent); box-shadow: inset 3px 0 0 var(--qf-accent); }
+.qf-dlg-page__head { display: flex; align-items: center; gap: 2px; margin-bottom: 6px; }
+.qf-dlg-page__title { flex: 1; font-weight: 600; color: var(--qf-accent-3); }
+.qf-dlg-page .qf-field { grid-template-columns: 76px minmax(0, 1fr); }
+.qf-dlg-page__textwrap { display: flex; flex-direction: column; gap: 2px; }
+.qf-dlg-page__text { min-height: 84px; font-family: var(--qf-mono); font-size: 13px; }
+.qf-dlg-page__stats { color: var(--qf-text-dim); font-size: 11px; text-align: right; }
+.qf-dlg-choice { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.qf-dlg-choice--on { padding: 6px 8px; border: 1px dashed var(--qf-border-2); border-radius: var(--qf-radius); }
+.qf-dlg-choice__rows { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.qf-dlg-choice__row { display: flex; align-items: center; gap: 6px; width: 100%; }
+.qf-dlg-choice__num { color: var(--qf-text-dim); width: 18px; text-align: right; }
+
+/* ---------------------------------------------------------------- preview */
+.qf-dlg-preview { display: flex; flex-direction: column; gap: 6px; }
+.qf-dlg-preview__screen { overflow-x: auto; }
+.qf-dlg-preview__canvas { border: 1px solid var(--qf-border-2); border-radius: 2px; background: #000; }
+.qf-dlg-preview__canvas:focus-visible { outline: 2px solid var(--qf-focus); outline-offset: 1px; }
+.qf-dlg-preview__bar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.qf-dlg-preview__status { color: var(--qf-text-dim); font-size: 11px; margin-left: 4px; flex: 1; min-width: 160px; }
+
+/* ---------------------------------------------------------------- usage */
+.qf-dlg-usage { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.qf-dlg-usage__item { display: flex; align-items: center; gap: 8px; padding: 3px 6px; background: var(--qf-bg-2); border: 1px solid var(--qf-border); border-radius: var(--qf-radius); font-size: 12px; }
+.qf-dlg-usage__label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.qf-dlg-usage__empty { color: var(--qf-text-dim); font-size: 12px; padding: 4px 2px; }
+
+/* ---------------------------------------------------------------- flags */
+.qf-dlg-flags { display: flex; flex-direction: column; gap: 6px; }
+.qf-dlg-flags__add { display: flex; gap: 4px; }
+.qf-dlg-flags__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.qf-dlg-flags__subtitle { font-size: 11px; color: #ffcf5a; margin: 4px 0 3px; }
+.qf-dlg-flag { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 3px 6px; background: var(--qf-bg-2); border: 1px solid var(--qf-border); border-radius: var(--qf-radius); }
+.qf-dlg-flag__main { flex: 1; min-width: 100px; }
+.qf-dlg-flag__name { font-family: var(--qf-mono); font-size: 12px; overflow-wrap: anywhere; }
+.qf-dlg-flag__desc { color: var(--qf-text-dim); font-size: 11px; }
+.qf-dlg-flag__count { cursor: pointer; color: var(--qf-text); font: inherit; font-size: 11px; }
+.qf-dlg-flag__count:hover:not(:disabled) { border-color: var(--qf-accent); }
+.qf-dlg-flag__count--unused { opacity: 0.55; cursor: default; }
+.qf-dlg-flag__actions { display: flex; gap: 0; }
+.qf-dlg-flags__undeclared .qf-dlg-flag__name, .qf-dlg-flags__engine .qf-dlg-flag__name { flex: 1; }
+.qf-dlg-flags__subtitle--engine { color: var(--qf-text-dim); cursor: help; }
+.qf-dlg-flag__actions .qf-btn--small { padding: 0 5px; min-height: 20px; font-size: 11px; }
+
+@media (max-width: 1320px) {
+  /* Preview + "Used by" sized to their content, the page editor right below them. */
+  .qf-dlg { grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); grid-template-rows: auto 1fr; overflow: auto; }
+  .qf-dlg-right { grid-column: 2; grid-row: 1; align-self: start; }
+  .qf-dlg-right > .qf-panel:last-child { flex: none; }
+  .qf-dlg-main { grid-column: 2; grid-row: 2; overflow: visible; }
+  .qf-dlg-side { grid-row: 1 / span 2; }
+}
+@media (max-width: 760px) {
+  .qf-dlg { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
+  .qf-dlg-right, .qf-dlg-main, .qf-dlg-side { grid-column: 1; grid-row: auto; }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "questforge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Questforge - a 16-bit top-down action-adventure maker and player in the spirit of A Link to the Past",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tests",
+    "test": "vitest run",
+    "e2e": "node scripts/e2e.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "playwright-core": "^1.63.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.1"
+  }
+}

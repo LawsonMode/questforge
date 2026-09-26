@@ -1,0 +1,222 @@
+/* Asset gallery (#/gallery). All classes are prefixed qf-gal-. */
+.qf-gal {
+  height: 100%;
+  overflow: auto;
+  background: #14121c;
+  color: #ece8f6;
+  font: 13px/1.4 'Segoe UI', system-ui, sans-serif;
+  padding: 0 20px 40px;
+}
+
+.qf-gal-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 12px 0;
+  background: #14121c;
+  box-shadow: 0 6px 8px -6px #000;
+  border-bottom: 1px solid #3a3452;
+}
+
+.qf-gal-head h1 {
+  margin: 0;
+  font-size: 18px;
+  color: #f0c040;
+}
+
+.qf-gal-counts { color: #a59fbd; }
+
+.qf-gal-nav { display: flex; gap: 4px; }
+
+.qf-gal-nav a {
+  padding: 3px 10px;
+  border: 1px solid #3a3452;
+  border-radius: 4px;
+  color: #ece8f6;
+  text-decoration: none;
+}
+
+.qf-gal-nav a:hover { border-color: #f0c040; }
+.qf-gal-nav a.is-active { background: #f0c040; border-color: #f0c040; color: #14121c; }
+
+.qf-gal-filter {
+  margin-left: auto;
+  width: 180px;
+  padding: 4px 8px;
+  border: 1px solid #3a3452;
+  border-radius: 4px;
+  background: #1d1a28;
+  color: #ece8f6;
+}
+
+.qf-gal-section > h2 {
+  margin: 22px 0 6px;
+  font-size: 16px;
+  color: #f0c040;
+  border-bottom: 1px solid #3a3452;
+  padding-bottom: 4px;
+}
+
+.qf-gal-section h3 {
+  margin: 14px 0 6px;
+  font-size: 13px;
+  color: #a59fbd;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.qf-gal-empty { color: #a59fbd; font-style: italic; }
+
+.qf-gal-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.qf-gal-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 5px;
+  background: #1d1a28;
+  border: 1px solid #2c2840;
+  border-radius: 4px;
+}
+
+.qf-gal-item canvas,
+.qf-gal-terrain canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.qf-gal-label {
+  font: 11px/1.2 ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  color: #ece8f6;
+  white-space: nowrap;
+}
+
+.qf-gal-label small { color: #a59fbd; }
+
+.qf-gal-checker {
+  background: repeating-conic-gradient(#3b3850 0% 25%, #2d2a3e 0% 50%) 0 0 / 24px 24px;
+}
+
+.qf-gal-frames {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+}
+
+/* Palettes */
+.qf-gal-palette { align-items: flex-start; }
+
+.qf-gal-swatches {
+  display: grid;
+  grid-template-columns: repeat(16, 20px);
+  gap: 2px;
+}
+
+.qf-gal-swatch {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #00000080;
+}
+
+.qf-gal-swatch.is-clear {
+  background:
+    linear-gradient(135deg, transparent 45%, #e05050 45%, #e05050 55%, transparent 55%),
+    repeating-conic-gradient(#3b3850 0% 25%, #2d2a3e 0% 50%) 0 0 / 10px 10px;
+}
+
+/* Terrains */
+.qf-gal-terrain {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px;
+  background: #1d1a28;
+  border: 1px solid #2c2840;
+  border-radius: 4px;
+}
+
+.qf-gal-pieces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 320px;
+}
+
+/* Sprites */
+.qf-gal-sprite {
+  margin: 10px 0 18px;
+}
+
+.qf-gal-sprite > h3 {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 14px;
+  color: #ece8f6;
+}
+
+.qf-gal-sprite > h3 small { color: #a59fbd; font-weight: normal; margin-left: 8px; }
+
+.qf-gal-swaps { border-color: #4d4570; }
+
+.qf-gal-anim-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* Broken art: red outline + "!" badge; each section lists its problems under the heading. */
+.qf-gal-item,
+.qf-gal-terrain { position: relative; }
+
+.qf-gal-item.is-invalid,
+.qf-gal-terrain.is-invalid {
+  border-color: #e04050;
+  box-shadow: 0 0 0 1px #e04050;
+}
+
+.qf-gal-sprite > h3.is-invalid { color: #ff8090; }
+
+.qf-gal-badge {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #e04050;
+  color: #fff;
+  font: bold 10px/14px ui-monospace, Consolas, monospace;
+  text-align: center;
+}
+
+.qf-gal-item > .qf-gal-badge,
+.qf-gal-terrain > .qf-gal-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+}
+
+.qf-gal-sprite > h3 > .qf-gal-badge { margin-left: 8px; vertical-align: 1px; }
+
+.qf-gal-issues {
+  margin: 6px 0 10px;
+  padding: 6px 10px;
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid #e04050;
+  border-radius: 4px;
+  background: #2a1420;
+  color: #ffb8c0;
+  font: 11px/1.45 ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+
+.qf-gal-issues ul { margin: 4px 0 0; padding-left: 18px; }
