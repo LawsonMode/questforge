@@ -345,7 +345,11 @@ export function mountMenu(root: HTMLElement, nav: Nav): () => void {
       el('span', { class: 'qf-menu-footer__dot', 'aria-hidden': 'true' }, '·'),
       el('a', { href: '#/gallery' }, 'Asset gallery'),
       el('span', { class: 'qf-menu-footer__dot', 'aria-hidden': 'true' }, '·'),
-      createSoundToggle('qf-btn--ghost qf-menu-sound').element));
+      createSoundToggle('qf-btn--ghost qf-menu-sound').element,
+      el('p', { class: 'qf-menu-tribute' },
+        'Inspired by ', el('i', null, 'The Legend of Zelda: A Link to the Past'),
+        '. Questforge is an independent fan project with no ties to Nintendo or The Legend of Zelda series. ',
+        el('b', null, 'Go play the originals!'))));
   root.appendChild(view);
   // Back from a game played with the pad: focus starts on "Play the sample adventure", ring shown.
   const padNav = startPadNav(view, { initial: () => playSample, autofocus: currentControls().device === 'gamepad' });

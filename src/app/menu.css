@@ -142,6 +142,8 @@
 .qf-menu-footer a { color: var(--qf-text-dim); }
 .qf-menu-footer a:hover { color: var(--qf-accent); }
 .qf-menu-footer__dot { opacity: 0.5; }
+.qf-menu-tribute { flex-basis: 100%; margin: 6px auto 0; max-width: 640px; text-align: center; line-height: 1.5; }
+.qf-menu-tribute b { color: var(--qf-text); font-weight: 600; }
 
 /* ---------------------------------------------------------------- new project dialog */
 .qf-menu-new { display: flex; flex-direction: column; gap: 12px; min-width: min(460px, 80vw); }

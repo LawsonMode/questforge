@@ -2,8 +2,12 @@
 
 **▶ Play it in your browser: https://lawsonmode.github.io/questforge/**
 
-**Questforge** is a browser-based **16-bit top-down action-adventure maker and player**, in the spirit of
-the classic console adventures of the early '90s. One app, two halves:
+> **A fan-made tribute.** Questforge was inspired by *The Legend of Zelda: A Link to the Past* and is
+> an independent fan project with **no ties to Nintendo or The Legend of Zelda series**. If you enjoy
+> it, go play the originals! (See [Inspiration and disclaimer](#inspiration-and-disclaimer).)
+
+**Questforge** is a browser-based **16-bit top-down action-adventure maker and player**, directly
+inspired by ***The Legend of Zelda: A Link to the Past***. One app, two halves:
 
 - **The game**: sword and shield, a full item kit, a dozen enemies, bosses, dungeons with keys and
   puzzles, SNES-style 256×224 pixel rendering and an original chiptune soundtrack.
@@ -238,10 +242,23 @@ sheets render tiles, sprites and every sample room to PNG:
 `QF_SHEETS=1 npx vitest run tests/tools/sheets.test.ts` (also `art-*-preview`, `art-tiles-scenes`,
 `sample-render`), written to `e2e-out/`.
 
-## Originality
+## Inspiration and disclaimer
 
-All art, music, sound effects, names and story in Questforge are **original** — drawn, composed and
-written for this project, procedurally generated from code in `src/content/art` and `src/audio`.
-Questforge is inspired by the 16-bit action-adventure genre; it is **not affiliated with, endorsed by
-or derived from** any existing game, company or trademark, and it contains no assets from any other
-game.
+**The inspiration.** Questforge exists because of ***The Legend of Zelda: A Link to the Past***
+(Nintendo, SNES, 1991). That game is the direct inspiration for Questforge's look, feel and design: the
+top-down 16-bit world, the sword-and-items adventuring, the dungeons full of keys and puzzles.
+
+**No affiliation.** Questforge is a free, independent fan project. It has **no ties to, and is not
+sponsored or endorsed by, Nintendo or anyone involved with The Legend of Zelda series**. *Nintendo*,
+*The Legend of Zelda* and *A Link to the Past* are trademarks of Nintendo; they are named here only to
+credit the inspiration.
+
+**All original.** All art, music, sound effects, names and story in Questforge are original: drawn,
+composed and written for this project, and generated from code in `src/content/art` and `src/audio`.
+It contains no assets, music, text or code from any Nintendo game.
+
+**Go play the originals!** If Questforge gives you even a little of that 16-bit adventure feeling,
+play the real thing. The Legend of Zelda series is one of the best in gaming, from the 1986 original
+through *A Link to the Past*, *Link's Awakening*, *Ocarina of Time*, *Breath of the Wild* and
+*Tears of the Kingdom*. You can play *A Link to the Past* today in the Nintendo Switch Online SNES
+library.

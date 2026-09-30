@@ -1,4 +1,4 @@
-# Claude Context — Zelda Clone / "Questforge" (v1.1.0)
+# Claude Context — Zelda Clone / "Questforge" (v1.1.1)
 
 Browser-based 16-bit top-down action-adventure **maker + player** in the spirit of *A Link to the Past*.
 One app, two halves: the **game** (sword, items, 12 enemies, 2 bosses, dungeons, puzzles, SNES-style 256×224
@@ -11,7 +11,7 @@ assets or trademarks (item display names are Questforge's own: Grapple Claw, Sto
 Heart Shard; internal ids stay `hookshot`, `glove`, `rupees`, ...).
 
 ## Version location
-`package.json` → `version` (single canonical spot; the menu footer imports it and shows "Questforge v1.1.0").
+`package.json` → `version` (single canonical spot; the menu footer imports it and shows "Questforge v1.1.1").
 
 ## Files
 - `README.md` — user-facing overview: features, controls, quick start, editor guide, file format, testing.
