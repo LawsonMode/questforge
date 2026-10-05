@@ -20,6 +20,8 @@ Heart Shard; internal ids stay `hookshot`, `glove`, `rupees`, ...).
 - `README.md` — user-facing overview: features, controls, quick start, editor guide, file format, testing.
 - `ARCHITECTURE.md` — **the build contract**: units, engine rules, module ownership, frozen contract files,
   contract changes since the freeze, persistence, feel targets, routes. Read first.
+- `docs/NEXT.md` — **start here when picking the project up**: next features in order, Quark integration, known issues.
+- `docs/LEARNING.md` — the learning layer (evidence, levels, Quark seam).
 - `docs/screenshots/` — README screenshots (copied from `e2e-out/`).
 - `src/main.ts` — hash router (`#/`, `#/play/<id>`, `#/playtest/<id>?w=&r=&x=&y=`, `#/edit/<id>`, `#/gallery`, `#/learning`); `window.__qf`.
 - `src/core/` — data model (`types.ts`), entity catalog (`catalog.ts`), project helpers, migrate/validate, autotile,
