@@ -16,6 +16,7 @@ import {
 import type { ArtActions, ArtState, PixelAsset, ToolId } from './model';
 import { FramePreviews } from './previews';
 import { fillChecker, paintBitmap, paletteColors } from './raster';
+import { UnderTheHood } from './underTheHood';
 import { PaletteStrip, TOOLS, Toolbar, type FrameOp, type ToggleFlag } from './tools';
 
 /** Zoom steps (screen px per art pixel). */
@@ -93,6 +94,7 @@ export class PixelEditor {
   private readonly view: HTMLDivElement;
   private readonly canvas: HTMLCanvasElement;
   private readonly status = el('div', { class: 'qf-art-status' });
+  private readonly hood = new UnderTheHood();
   private readonly resizeObs: ResizeObserver;
 
   private work: Bitmap | null = null;
@@ -138,7 +140,8 @@ export class PixelEditor {
       this.view,
       timeline,
       el('div', { class: 'qf-art-bottom' }, this.strip.element, this.previews.element),
-      el('div', { class: 'qf-art-statusbar' }, this.status, this.toolbar.viewBar));
+      el('div', { class: 'qf-art-statusbar' }, this.status, this.toolbar.viewBar),
+      this.hood.element);
     // A clicked button would keep the keyboard and repeat its action on Space / Enter: give it back to the canvas.
     for (const bar of [this.toolbar.element, this.toolbar.viewBar, this.strip.element, timeline]) {
       bar?.addEventListener('click', (e) => {
@@ -388,6 +391,7 @@ export class PixelEditor {
     const tool = TOOLS.find((t) => t.id === this.effectiveTool());
     if (tool) parts.push(`${tool.label}: ${tool.hint}`);
     this.setStatus(parts.join('  ·  '));
+    if (this.work) this.hood.update(a, this.work, this.hover, this.host.palette());
   }
 
   private setStatus(text: string): void {

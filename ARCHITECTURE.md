@@ -152,6 +152,21 @@ editor all read it.
   1200)`, `padStick(t, x, y, ms)`; `window.__fakePad.disconnect()` / `connect()`; `window.__fakePadRumble` records the
   rumble effects played. Examples: `e2e/pad-basics.mjs`, `pad-game*.mjs`, `pad-app*.mjs`.
 
+## Learning layer (`src/learning/`, 1.2.0)
+Evidence of CS-standards learning, recorded from the student's own work; full description in `docs/LEARNING.md`.
+- `standards.ts` (skill catalog: Atlas-style skill ids → Idaho / DL draft / CSTA / ISTE codes, level 1-4 descriptors),
+  `activities.ts` (activity manifest: the only place activities map to skills), `log.ts` (events in Quark's xAPI-lite
+  draft shape, own IndexedDB database `questforge-learning` + memory fallback, `LearningSink` seam for Quark),
+  `levels.ts` (pure `proposeLevels`; levels are derived, never stored, never go down), `editorObserver.ts`,
+  `export.ts` (`questforge.learning/1`), `page.ts` (`#/learning`).
+- The editor shell starts `observeEditor(ctx)` (stopped before the tabs unmount) and calls `notePlaytest` / `noteExported`;
+  the observer listens to the bus only. Trigger evidence is recorded 1.5 s after the last edit; the code is the work sample.
+  Baseline work (what the project held when the editor opened) is never credited; edited baseline work is `modified` and
+  counts at most for level 2.
+- UI: `editor/entities/triggerCode.ts` (pure trigger → pseudocode + tokenizer) and `codeView.ts` (Show as code, setting
+  `codeView`); `editor/art/underTheHood.ts` (setting `hoodOpen`) with `learning/pixelBits.ts`. Styles in `learning/learning.css`.
+- Recording happens only in the editor; `#/play` and `#/playtest` record nothing yet.
+
 ## Persistence
 - Projects and save games (3 slots per project) live in IndexedDB (`questforge` database), with an in-memory fallback
   when IndexedDB is blocked. Imports go through `migrateProject` (sanitise, clamp — e.g. room grid positions to ±256
@@ -179,7 +194,7 @@ right = action, left = item, Start = pause, Select = map, LB/RB = pages, d-pad o
 room), Ctrl+S, Ctrl+Z/Y, 1–4 tabs, ? help; the editor itself is mouse & keyboard.
 
 ## Routes (e2e + menu)
-`#/` menu · `#/play/<id|sample>` · `#/playtest/<id|sample>?w=&r=&x=&y=` · `#/edit/<id|sample>` · `#/gallery`.
+`#/` menu · `#/play/<id|sample>` · `#/playtest/<id|sample>?w=&r=&x=&y=` · `#/edit/<id|sample>` · `#/gallery` · `#/learning`.
 `window.__qf` exposes `{ route, game, editor, ready, error }`; `Game.services` exposes GameServices for tests.
 
 ## Legal / originality checklist

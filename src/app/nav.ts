@@ -4,10 +4,11 @@
 //   #/playtest/<projectId|sample>?w=<worldId>&r=<roomId>&x=<px>&y=<px>   straight into gameplay
 //   #/edit/<projectId|sample>   editor ("sample" opens an unsaved copy of the sample adventure)
 //   #/gallery                   asset gallery (default assets)
+//   #/learning                  My Learning: proposed skill levels, evidence, export
 // Any other non-empty path is 'notFound' (the app shows a friendly page).
 /** A parsed hash route. */
 export interface Route {
-  view: 'menu' | 'play' | 'playtest' | 'edit' | 'gallery' | 'notFound';
+  view: 'menu' | 'play' | 'playtest' | 'edit' | 'gallery' | 'learning' | 'notFound';
   id?: string;
   params: URLSearchParams;
   /** The unrecognised path, for 'notFound'. */
@@ -33,6 +34,7 @@ export function parseRoute(hash: string): Route {
     return id === null ? notFound : { view, id, params };
   }
   if (view === 'gallery') return { view: 'gallery', params };
+  if (view === 'learning') return { view: 'learning', params };
   if (view === undefined || view === 'menu') return { view: 'menu', params };
   return notFound;
 }

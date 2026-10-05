@@ -84,7 +84,9 @@ function aboutCard(): HTMLElement {
       el('li', null, el('b', null, 'Draw'), ' your own tiles and sprites on the Art tab.'),
       el('li', null, el('b', null, 'Playtest'), ' any time, then export and share your adventure.')),
     el('p', { class: 'qf-menu-side__note' }, 'Projects are saved in this browser. Export a ', el('code', null, '.questforge.json'),
-      ' file to back one up or share it — anyone can import it here.'));
+      ' file to back one up or share it — anyone can import it here.'),
+    el('p', { class: 'qf-menu-side__note' }, 'What you build counts toward computer-science standards: see your levels and evidence on ',
+      el('a', { href: '#/learning' }, 'My Learning'), '.'));
 }
 
 /** Whether a drag carries files (not text or a dragged element). */
@@ -344,6 +346,8 @@ export function mountMenu(root: HTMLElement, nav: Nav): () => void {
       el('span', null, 'Original art, music and story'),
       el('span', { class: 'qf-menu-footer__dot', 'aria-hidden': 'true' }, '·'),
       el('a', { href: '#/gallery' }, 'Asset gallery'),
+      el('span', { class: 'qf-menu-footer__dot', 'aria-hidden': 'true' }, '·'),
+      el('a', { href: '#/learning' }, 'My Learning'),
       el('span', { class: 'qf-menu-footer__dot', 'aria-hidden': 'true' }, '·'),
       createSoundToggle('qf-btn--ghost qf-menu-sound').element,
       el('p', { class: 'qf-menu-tribute' },

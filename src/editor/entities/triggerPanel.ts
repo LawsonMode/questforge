@@ -10,6 +10,7 @@ import { takeTriggerFocus } from './focus';
 import { duplicateTrigger, newTrigger } from './triggerModel';
 import { triggerIssues, triggerSummary } from './triggerText';
 import { buildTriggerForm, triggerIssueBox, type EditOpts, type TriggerEditHost } from './triggerEditor';
+import { triggerCodeBox, type TriggerCodeBox } from './codeView';
 import { RenderScheduler, focusKey, inline, isShown, keepFocus, retarget } from './widgets';
 
 /** Project changes that can alter the list or the form. */
@@ -25,6 +26,7 @@ class TriggerPanel {
   readonly element: HTMLDivElement = el('div', { class: 'qf-ent-trig' }, this.head, this.list, this.body);
   private readonly scheduler = new RenderScheduler(this.element, () => this.render());
   private issuesHost: HTMLDivElement | null = null;
+  private codeBox: TriggerCodeBox | null = null;
   /** Selected trigger id per room. */
   private readonly selected = new Map<string, string>();
   private muted = false;
@@ -58,6 +60,7 @@ class TriggerPanel {
   private build(): void {
     const { ctx } = this;
     this.issuesHost = null;
+    this.codeBox = null;
     const room = ctx.room();
     if (!room) {
       setChildren(this.head);
@@ -84,6 +87,7 @@ class TriggerPanel {
   private editor(room: Room, current: Trigger): HTMLElement {
     const host = this.host(room, current);
     this.issuesHost = el('div', { class: 'qf-ent-warnhost' }, triggerIssueBox(host));
+    this.codeBox = triggerCodeBox(this.ctx.project, room, current);
     const i = room.triggers.indexOf(current);
     return el('div', { class: 'qf-ent-trig-editor' },
       el('div', { class: 'qf-ent-trig-editor__bar' },
@@ -97,7 +101,8 @@ class TriggerPanel {
             this.remove(room, current);
           }, { small: true, kind: 'danger' }))),
       this.issuesHost,
-      buildTriggerForm(host));
+      buildTriggerForm(host),
+      this.codeBox.element);
   }
 
   /**
@@ -179,6 +184,7 @@ class TriggerPanel {
     const current = this.current(room);
     keepFocus(this.element, () => this.renderList(room, current));
     if (current && this.issuesHost) setChildren(this.issuesHost, triggerIssueBox({ ctx: this.ctx, room, trigger: current }));
+    if (current) this.codeBox?.update(this.ctx.project, room, current);
   }
 
   /** Structural edit of the room's trigger list (one undo step), then re-render. */

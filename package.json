@@ -1,6 +1,6 @@
 {
   "name": "questforge",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "description": "Questforge - a 16-bit top-down action-adventure maker and player in the spirit of A Link to the Past",

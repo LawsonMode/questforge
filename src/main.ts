@@ -231,6 +231,12 @@ async function mountRoute(route: Route, seq: number): Promise<(() => void) | nul
       document.title = 'Asset gallery — Questforge';
       return withPadNav(mountGallery(root, createSampleProject()));
     }
+    case 'learning': {
+      const { mountLearning } = await import('./learning/page');
+      if (seq !== renderSeq) return null;
+      document.title = 'My Learning — Questforge';
+      return withPadNav(mountLearning(root, { back: () => nav.go('#/') }));
+    }
     case 'notFound':
       return notFound('Page not found', `There is nothing at “${route.path ?? location.hash}”. The link may be mistyped or out of date.`);
     case 'play':

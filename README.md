@@ -75,6 +75,13 @@ TypeScript + Vite, Canvas 2D and WebAudio, **no runtime dependencies**. Projects
   animations and an origin, drawing tools, and usage tracking.
 - **Project tab**: title, subtitle, author, start hearts and items, intro dialogue, title music, the
   start location, a live **validation report** with jump-to buttons, and project statistics.
+- **Learning layer (CS standards)**: **Show as code** turns any trigger into Python-style pseudocode
+  (`when room.enter:` / `if ...:` / ordered actions), and **Under the hood** on the Art tab shows a frame as
+  the hex digits it is stored as and the hovered pixel's palette index and 5-bit colour channels in binary.
+  While students build, Questforge records their work as evidence (the code of every trigger they get
+  working, bugs fixed, playtests, pixel and palette edits) and **My Learning** (`#/learning`) proposes a
+  level from 1 to 4 for each skill, mapped to Idaho, CSTA and ISTE standards, with the work that proves
+  it and an export for the teacher. Local to the browser; see [docs/LEARNING.md](docs/LEARNING.md).
 - **Playtest** any time with **F5** (Shift+F5 from the selected room) with debug toggles for hitboxes,
   invincibility and noclip; **Esc** returns to the editor (on a controller, hold **Start + Select**).
 

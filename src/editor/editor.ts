@@ -26,6 +26,7 @@ import { editorShortcut } from './shell/keys';
 import { applyNaming, namingOf, renamed } from './shell/rename';
 import { icon } from './shell/icons';
 import { shortName, uniqueName } from '../app/format';
+import { noteExported, notePlaytest, observeEditor } from '../learning/editorObserver';
 
 /** Host callbacks and flags for the editor. */
 export interface EditorOptions {
@@ -174,6 +175,8 @@ export class Editor {
     root.appendChild(this.el);
     this.bindEvents();
     this.cleanups.push(() => this.topbar.destroy());
+    // Learning evidence (src/learning): stops before the tabs unmount, recording pending edits.
+    this.cleanups.push(observeEditor(this.ctx));
     this.ctx.switchTab('map');
     void this.checkPersistence();
   }
@@ -528,6 +531,7 @@ export class Editor {
   private exportFile(): void {
     try {
       downloadProject(this.project);
+      noteExported();
       toast(`Exported “${shortName(this.project.name)}”`, 'success');
     } catch (err) {
       toast(`Export failed: ${err instanceof Error ? err.message : String(err)}`, 'error');
@@ -573,6 +577,7 @@ export class Editor {
       toast(`Playtest failed to start: ${err instanceof Error ? err.message : String(err)}`, 'error', 5000);
       return;
     }
+    notePlaytest(start.room);
     this.el.hidden = true;
     this.opts.onGame?.(this.playtestHandle.game);
   }

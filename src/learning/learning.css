@@ -1,0 +1,82 @@
+/* Learning layer: code views (trigger code, Under the hood) and the My Learning page. */
+
+.qf-code {
+  margin: 0;
+  padding: 8px 10px;
+  background: #0e0c14;
+  border: 1px solid var(--qf-border);
+  border-radius: var(--qf-radius);
+  color: var(--qf-text);
+  font: 12px/1.5 var(--qf-mono);
+  white-space: pre;
+  overflow-x: auto;
+  tab-size: 4;
+}
+.qf-code__kw { color: #c792ea; font-weight: 600; }
+.qf-code__fn { color: #82aaff; }
+.qf-code__str { color: #c3e88d; }
+.qf-code__num { color: #f78c6c; }
+.qf-code__com { color: #7f7a96; font-style: italic; }
+
+/* Trigger panel: "Show as code" */
+.qf-trig-code { margin-top: 8px; border-top: 1px solid var(--qf-border); padding-top: 6px; }
+.qf-trig-code__summary { cursor: pointer; color: var(--qf-accent); font-weight: 600; font-size: 12px; padding: 2px 0; }
+.qf-trig-code__note { margin: 4px 0 0; color: var(--qf-text-dim); font-size: 11px; }
+.qf-trig-code[open] .qf-trig-code__summary { margin-bottom: 4px; }
+
+/* Art tab: "Under the hood" */
+.qf-hood { border-top: 1px solid var(--qf-border); background: var(--qf-bg-2); font-size: 12px; }
+.qf-hood > summary { cursor: pointer; padding: 4px 10px; color: var(--qf-accent); font-weight: 600; }
+.qf-hood__body { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px 16px; padding: 4px 10px 10px; max-height: 260px; overflow: auto; }
+.qf-hood__grid { font: 11px/1.25 var(--qf-mono); letter-spacing: 1px; padding: 6px 8px; }
+.qf-hood__hl { background: var(--qf-accent); color: #000; }
+.qf-hood__row { background: #ffffff14; }
+.qf-hood__facts { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.qf-hood__facts p { margin: 0; color: var(--qf-text-dim); }
+.qf-hood__facts b { color: var(--qf-text); }
+.qf-hood__table { border-collapse: collapse; font: 12px var(--qf-mono); }
+.qf-hood__table td, .qf-hood__table th { padding: 1px 8px 1px 0; text-align: left; white-space: nowrap; }
+.qf-hood__table th { color: var(--qf-text-dim); font: 600 11px var(--qf-font); }
+.qf-hood__swatch { display: inline-block; width: 12px; height: 12px; border: 1px solid #fff6; vertical-align: -2px; margin-right: 4px; }
+.qf-hood__bits { color: var(--qf-accent-2); }
+
+/* My Learning page (#/learning) */
+.qf-learn { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; color: var(--qf-text); font-family: var(--qf-font); }
+.qf-learn__head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 6px; }
+.qf-learn__head h1 { margin: 0; font-size: 22px; flex: 1 1 auto; }
+.qf-learn__intro { color: var(--qf-text-dim); margin: 0 0 18px; max-width: 75ch; line-height: 1.5; }
+.qf-learn__skills { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.qf-learn-skill { background: var(--qf-panel); border: 1px solid var(--qf-border); border-radius: 6px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.qf-learn-skill__top { display: flex; align-items: baseline; gap: 8px; }
+.qf-learn-skill__name { font-weight: 700; flex: 1 1 auto; }
+.qf-learn-skill__lvl { font: 600 12px var(--qf-mono); color: var(--qf-accent); white-space: nowrap; }
+.qf-learn-skill__ican { margin: 0; color: var(--qf-text-dim); font-size: 13px; line-height: 1.4; }
+.qf-learn-meter { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+.qf-learn-meter span { height: 8px; border-radius: 2px; background: var(--qf-bg-3); }
+.qf-learn-meter span.on { background: var(--qf-accent-2); }
+.qf-learn-meter span.cap { background: repeating-linear-gradient(45deg, var(--qf-bg-3), var(--qf-bg-3) 3px, transparent 3px, transparent 6px); }
+.qf-learn-codes { display: flex; flex-wrap: wrap; gap: 4px; }
+.qf-learn-codes span { font: 11px var(--qf-mono); padding: 1px 6px; border: 1px solid var(--qf-border-2); border-radius: 10px; color: var(--qf-text-dim); }
+.qf-learn-codes span.verify { border-style: dashed; }
+.qf-learn-skill ul { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.45; }
+.qf-learn-skill__next { margin: 0; font-size: 12px; }
+.qf-learn-skill__next b { color: var(--qf-accent-3); }
+.qf-learn-skill details summary { cursor: pointer; font-size: 12px; color: var(--qf-accent); }
+.qf-learn-evidence { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.qf-learn-ev { font-size: 12px; }
+.qf-learn-ev__meta { color: var(--qf-text-dim); }
+.qf-learn-ev .qf-code { margin-top: 3px; font-size: 11px; }
+.qf-learn h2 { font-size: 16px; margin: 28px 0 8px; }
+.qf-learn__timeline { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.qf-learn__timeline li { padding: 4px 0; border-bottom: 1px solid var(--qf-border); display: flex; gap: 10px; flex-wrap: wrap; }
+.qf-learn__timeline time { color: var(--qf-text-dim); font: 12px var(--qf-mono); min-width: 13ch; }
+.qf-learn__empty { color: var(--qf-text-dim); padding: 16px; border: 1px dashed var(--qf-border-2); border-radius: 6px; }
+.qf-learn table.qf-learn__manifest { border-collapse: collapse; width: 100%; font-size: 12px; }
+.qf-learn__manifest th, .qf-learn__manifest td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--qf-border); vertical-align: top; }
+.qf-learn__manifest code { font-size: 11px; }
+@media (max-width: 520px) {
+  .qf-learn__skills { grid-template-columns: minmax(0, 1fr); }
+  .qf-hood__body { grid-template-columns: minmax(0, 1fr); }
+}
+.qf-hood { flex: none; }
+.qf-learn__head select { width: auto; max-width: 100%; }

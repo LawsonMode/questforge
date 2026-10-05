@@ -1,24 +1,27 @@
-# Claude Context — Zelda Clone / "Questforge" (v1.1.1)
+# Claude Context — Zelda Clone / "Questforge" (v1.2.0)
 
 Browser-based 16-bit top-down action-adventure **maker + player** in the spirit of *A Link to the Past*.
 One app, two halves: the **game** (sword, items, 12 enemies, 2 bosses, dungeons, puzzles, SNES-style 256×224
 pixel rendering, chiptune audio) and the **builder** (map & room editor, entity/puzzle placement, trigger and
 dialogue editors, pixel-art editor, playtest). Ships the sample adventure "The Hollow Crown" (id `sample`).
 Playable end to end with a gamepad (1.1.0): device-aware button labels and glyphs, rumble, Swap A/B, hub pad navigation.
+Learning layer (1.2.0): records students' own work (trigger code, fixes, playtests, pixel edits) as evidence and proposes
+a 1-4 mastery level per CS skill/standard on My Learning (`#/learning`); Show as code + Under the hood views; local only,
+Quark integration later via `LearningSink` (`docs/LEARNING.md`).
 TypeScript + Vite, Canvas 2D, WebAudio, no runtime dependencies; projects save to IndexedDB and export as
 `.questforge.json`. Standalone (non-5bot). All art, music, names and story are original — never copy Nintendo
 assets or trademarks (item display names are Questforge's own: Grapple Claw, Stone Gauntlet, Gems, Heart Vessel,
 Heart Shard; internal ids stay `hookshot`, `glove`, `rupees`, ...).
 
 ## Version location
-`package.json` → `version` (single canonical spot; the menu footer imports it and shows "Questforge v1.1.1").
+`package.json` → `version` (single canonical spot; the menu footer imports it and shows "Questforge v1.2.0").
 
 ## Files
 - `README.md` — user-facing overview: features, controls, quick start, editor guide, file format, testing.
 - `ARCHITECTURE.md` — **the build contract**: units, engine rules, module ownership, frozen contract files,
   contract changes since the freeze, persistence, feel targets, routes. Read first.
 - `docs/screenshots/` — README screenshots (copied from `e2e-out/`).
-- `src/main.ts` — hash router (`#/`, `#/play/<id>`, `#/playtest/<id>?w=&r=&x=&y=`, `#/edit/<id>`, `#/gallery`); `window.__qf`.
+- `src/main.ts` — hash router (`#/`, `#/play/<id>`, `#/playtest/<id>?w=&r=&x=&y=`, `#/edit/<id>`, `#/gallery`, `#/learning`); `window.__qf`.
 - `src/core/` — data model (`types.ts`), entity catalog (`catalog.ts`), project helpers, migrate/validate, autotile,
   storage (IndexedDB projects + saves, localStorage settings), shared primitives, `stub.ts` (unused marker).
 - `src/content/` — default content catalog (`ids.ts`: tile/sprite/item ids + `ITEM_INFO`), procedural original art
@@ -37,6 +40,8 @@ Heart Shard; internal ids stay `hookshot`, `glove`, `rupees`, ...).
 - `src/app/` — menu hub (`menu.ts`), project cards, new-project dialog, routes (`nav.ts`), `soundToggle.ts`,
   `padNav.ts` (DOM pad navigation for the menu, message pages and gallery), `padBanner.ts` (the hub's controller
   banner), `controls.ts` (device-aware control lists shared by the menu, editor help and playtest bar).
+- `src/learning/` — learning layer: skill/standards catalog, activity manifest, evidence log (Quark-shaped events),
+  proposed levels, editor observer, export, My Learning page. Read `docs/LEARNING.md` first.
 - `src/dev/arena.ts` — e2e helper: `startArena(opts)` builds & runs a one-room project in the page.
 - `tests/` — Vitest unit tests (`<area>-*.test.ts`, `release-*.test.ts`); `tests/tools/` — node PNG renderer
   (`png.ts`) + opt-in asset sheets (`QF_SHEETS=1`).
